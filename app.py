@@ -730,10 +730,6 @@ def calculate_elo_rating(rating1, rating2, result1):
 
     return round(new_rating1), round(new_rating2)
 
-
-#cd путь/к/твоему/проекту
- МАРШРУТЫ
-
 @app.route('/')
 def main():
     return render_template('main.html')
