@@ -1,0 +1,352 @@
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 73px;
+    font-family: 'Source Code Pro', monospace;
+    color: #b8b8b8;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+        url('Matrix-Code-PNG-Image.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #0A0A0A;
+}
+
+.container {
+	max-width: 1440px;
+	margin: 0 auto;
+	padding: 0 24px;
+}
+
+header {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 1000;
+	width: 100%;
+	height: 73px;
+	padding: 0 24px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #2C2C2C;
+	border-radius: 0 0 5px 5px;
+}
+
+.header_left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.header_icon {
+	width: 30px;
+	height: 28px;
+	background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+	background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.header_name {
+	font-size: 25px;
+	color: #fff;
+}
+
+.header_right {
+	display: flex;
+	align-items: center;
+	gap: 40px;
+}
+
+.header_center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 16px;
+}
+
+.active_match_banner {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 18px;
+    border: 1px solid #00D4FF;
+    background: rgba(0, 212, 255, 0.10);
+    color: #E8F9FF;
+    text-decoration: none;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.active_match_banner:hover {
+    background: rgba(0, 212, 255, 0.18);
+}
+
+.header_link {
+	font-size: 17px;
+	color: white;
+	text-decoration: none;
+}
+
+.header_link:hover {
+	color: #00D4FF;
+}
+
+main {
+	flex: 1;
+	padding: 27px 0 60px;
+}
+
+.title {
+	font-weight: 500;
+	font-size: 40px;
+	margin-bottom: 50px;
+	color: #fff;
+}
+
+.search_task {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 30px;
+	flex-wrap: wrap;
+	gap: 20px;
+}
+
+.search {
+	flex: 1;
+	min-width: 300px;
+	max-width: 909px;
+	height: 60px;
+	background: #2C2C2C;
+	border-radius: 30px;
+	display: flex;
+	align-items: center;
+	padding: 0 20px;
+}
+
+.search_place {
+	background: transparent;
+	border: none;
+	color: rgba(255, 255, 255, 0.6);
+	font-family: 'Source Code Pro', monospace;
+	font-weight: 500;
+	font-size: 18px;
+	width: 100%;
+	outline: none;
+}
+
+.filters {
+	display: flex;
+	gap: 20px;
+}
+
+.filter_text {
+	background-color: #2C2C2C;
+    border: 1px solid #2C2C2C;
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 21px;
+    color: #FFFFFF;
+    width: 180px;
+}
+
+.tasks_list {
+	background: #2C2C2C;
+	border-radius: 15px;
+	overflow: hidden;
+}
+
+.task_item {
+	display: flex;
+	align-items: center;
+	padding: 20px;
+	border-bottom: 1px solid #454545;
+	transition: background 0.3s;
+	gap: 20px;
+}
+
+.task_item:hover {
+	background: #3a3a3a;
+}
+
+.task_num {
+	width: 65px;
+	height: 30px;
+	background: #454545;
+	border-radius: 5px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 500;
+	font-size: 15px;
+	flex-shrink: 0;
+}
+
+.task_info {
+	flex: 1;
+}
+
+.task_name {
+	font-weight: 500;
+	font-size: 16px;
+	margin-bottom: 5px;
+	color: #fff;
+}
+
+.task_level {
+	font-weight: 500;
+	font-size: 14px;
+	color: #00D4FF;
+}
+
+.btn_run {
+	background: #00D4FF;
+	color: #000;
+	text-decoration: none;
+	padding: 10px 20px;
+	border-radius: 20px;
+	font-weight: 500;
+	font-size: 14px;
+	transition: all 0.3s;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+footer {
+	height: 70px;
+	padding: 0 60px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #2C2C2C;
+	color: #fff;
+	font-family: 'Source Code Pro', monospace;
+}
+
+.footer_left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	font-weight: 500;
+	font-size: 18px;
+}
+
+.footer_icon {
+    width: 30px;
+    height: 30px;
+    background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.footer_right {
+	display: flex;
+	align-items: center;
+	gap: 40px;
+}
+
+.contact {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	white-space: nowrap;
+}
+
+.icon_mail {
+	width: 20px;
+	height: 20px;
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>');
+	background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.icon_phone {
+	width: 20px;
+	height: 20px;
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>');
+	background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.email {
+	font-weight: 700;
+	font-size: 18px;
+	color: #fff;
+	text-decoration: none;
+}
+
+.phone {
+	font-weight: 700;
+	font-size: 18px;
+	color: #fff;
+}
+
+.task_actions{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status_badge{
+    font-family: "Source Code Pro", monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid #454545;
+    color: #b8b8b8;
+    background: rgba(255,255,255,0.03);
+    min-width: 85px;
+    text-align: center;
+}
+
+.status_badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status_badge.accepted {
+    color: #10B981;
+    border-color: rgba(16, 185, 129, 0.6);
+}
+
+.status_badge.partially_correct {
+    color: #F59E0B;
+    border-color: rgba(245, 158, 11, 0.6);
+}
+
+.status_badge.wrong_answer, .status_badge.time_limit, .status_badge.runtime_error, .status_badge.compilation_error {
+    color: #EF4444;
+    border-color: rgba(239, 68, 68, 0.6);
+}
+.status_badge.testing {
+    color: #60A5FA;
+    border-color: rgba(96, 165, 250, 0.6);
+}
+
+.status_badge.none {
+    color: #b8b8b8;
+    border-color: rgba(184, 184, 184, 0.4);
+}
+

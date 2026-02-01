@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>О нас - CodeDuel</title>
+	<link rel="stylesheet" href="../static/about_reg.css">
+</head>
+<body>
+	<header>
+		<div class="header_left">
+			<div class="trophy_icon"></div>
+			<div class="logo">CodeDuel</div>
+		</div>
+		<div class="header_right">
+			<a href="{{ url_for('profile') }}" class="header_link">Профиль</a>
+			<a href="{{ url_for('main_reg') }}" class="header_link">Главная</a>
+            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
+			<a href="{{url_for('tasks')}}" class="btn">Задачи</a>
+		</div>
+	</header>
+
+	<main>
+		<div class="container">
+			<div class="about">
+				<h1>О платформе CodeDuel</h1>
+				<p>Инновационная платформа для соревнований по программированию в реальном времени. Сражайтесь с соперниками, повышайте свой рейтинг и становитесь лучшим!</p>
+			</div>
+
+			<div class="mission">
+				<h2>Наша миссия</h2>
+				<div class="card">
+					<p>Мы создаем сообщество разработчиков, где каждый может проверить свои навыки, научиться чему-то новому и посоревноваться с достойными соперниками. Наша цель — сделать программирование более интересным и увлекательным.</p>
+				</div>
+			</div>
+
+			<div class="team">
+				<h2>Наша команда</h2>
+				<div class="t_card">
+					<div class="team_member">
+						<div class="member_photo"></div>
+						<h3>Константин Краев</h3>
+						<div class="position">Full Stack | Data Scientist</div>
+					</div>
+					<div class="team_member">
+						<div class="member_photo"></div>
+						<h3>Андрей Дронов</h3>
+                        <div>Ставьте 2 пж <h1>🥹</h1></div>
+					</div>
+                    <div class="team_member">
+						<div class="member_photo"></div>
+						<h3>Роман Воробьев</h3>
+                        <div>soon...</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="adv">
+				<h2>Наши преимущества</h2>
+				<div class="cards">
+					<div class="a_card">
+						<h3>Совершенство</h3>
+						<p>Стремимся к созданию лучшей платформы для программистов</p>
+					</div>
+					<div class="a_card">
+						<h3>Инновации</h3>
+						<p>Постоянно улучшаем и добавляем новые функции</p>
+					</div>
+					<div class="a_card">
+						<h3>Сообщество</h3>
+						<p>Создаем дружелюбную среду для развития</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<footer>
+		<div class="footer_left">
+			<div class="footer_icon"></div>
+			<div>Соревновательная платформа</div>
+		</div>
+		<div class="footer_right">
+			<div class="contact">Связаться с нами:</div>
+			<div class="contact">
+				<div class="icon_mail"></div>
+				<a href="mailto:info@codeduel.com" class="email">info@codeduel.com</a>
+			</div>
+			<div class="contact">
+				<div class="icon_phone"></div>
+				<div class="phone">+1 (123) 456 78 80</div>
+			</div>
+		</div>
+	</footer>
+</body>
+</html>

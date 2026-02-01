@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск дуэли - CodeDuel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='matchmaking.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header_left">
+            <div class="header_icon"></div>
+            <div class="header_name">CodeDuel</div>
+        </div>
+        <div class="header_center">
+            {% if active_match_id %}
+                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
+                    У вас есть активный матч → перейти
+                </a>
+            {% endif %}
+        </div>
+        <div class="header_right">
+            <a href="{{ url_for('profile') }}" class="header_link">Профиль</a>
+            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
+            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
+            <a href="{{ url_for('tasks') }}" class="btn">Задачи</a>
+        </div>
+    </header>
+
+    <main>
+    <div class="container">
+
+        <div class="matchmaking_header">
+            <p>Выберите сложность задачи и начните поиск соперника</p>
+        </div>
+
+        <!-- Статистика пользователя -->
+        <div class="user_stats">
+            <div class="stat_card">
+                <div class="stat_value">{{ current_user.elo }}</div>
+                <div class="stat_label">Рейтинг ELO</div>
+            </div>
+            <div class="stat_card">
+                <div class="stat_value">{{ current_user.wins }}</div>
+                <div class="stat_label">Победы</div>
+            </div>
+            <div class="stat_card">
+                <div class="stat_value">{{ current_user.games_played }}</div>
+                <div class="stat_label">Всего матчей</div>
+            </div>
+        </div>
+
+        <!-- Выбор сложности -->
+        <div class="difficulty_section">
+            <div class="section_title">Сложность</div>
+            <div class="difficulty_grid">
+                <div class="difficulty_card" data-difficulty="easy" onclick="selectDifficulty('easy')">
+                    <h3>Легкая</h3>
+                    <p>Для новичков</p>
+                </div>
+                <div class="difficulty_card" data-difficulty="medium" onclick="selectDifficulty('medium')">
+                    <h3>Средняя</h3>
+                    <p>Стандартные задачи</p>
+                </div>
+                <div class="difficulty_card" data-difficulty="hard" onclick="selectDifficulty('hard')">
+                    <h3>Сложная</h3>
+                    <p>Повышенный уровень</p>
+                </div>
+                <div class="difficulty_card" data-difficulty="any" onclick="selectDifficulty('any')">
+                    <h3>Любая</h3>
+                    <p>Случайная задача</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопка поиска -->
+        <div class="search_section">
+            <button id="startSearchBtn" class="search_button">
+                Найти противника
+            </button>
+        </div>
+
+        <!-- Статус поиска -->
+        <div id="searchStatus" class="search_status hidden">
+            <div class="status_header">
+                <div class="status_text" id="statusText">Подбираем соперника...</div>
+                <div class="timer" id="searchTimer">0:00</div>
+            </div>
+
+            <div class="search_stats" id="queueStats">
+                <div class="stat_row">
+                    <span class="stat_label">Игроков в очереди:</span>
+                    <span class="stat_value" id="totalPlayers">0</span>
+                </div>
+            </div>
+
+            <div id="matchFound" class="match_found hidden">
+                <div class="opponent_card">
+                    <div class="opponent_info">
+                        <div class="opponent_name" id="opponentName"></div>
+                        <div class="opponent_elo" id="opponentElo"></div>
+                    </div>
+                </div>
+                <div class="task_info">
+                    <div class="task_title" id="taskTitle"></div>
+                    <div class="task_difficulty" id="taskDifficulty"></div>
+                </div>
+                <div class="action_buttons">
+                    <button id="acceptMatchBtn" class="accept_button">Принять</button>
+                    <button id="cancelMatchBtn" class="cancel_button">Отклонить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="online_stats">
+            <div class="section_title">Онлайн</div>
+            <div class="stats_grid">
+                <div class="online_stat">
+                    <div class="stat_number" id="totalInQueue">0</div>
+                    <div class="stat_label">Ищут матч</div>
+                </div>
+                <div class="online_stat">
+                    <div class="stat_number" id="totalOnline">0</div>
+                    <div class="stat_label">Всего онлайн</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <footer>
+        <div class="footer_left">
+            <div class="footer_icon"></div>
+            <div>Соревновательная платформа</div>
+        </div>
+        <div class="footer_right">
+            <div class="contact">Связаться с нами:</div>
+            <div class="contact">
+                <div class="icon_mail"></div>
+                <a href="mailto:info@codeduel.com" class="email">info@codeduel.com</a>
+            </div>
+            <div class="contact">
+                <div class="icon_phone"></div>
+                <div class="phone">+1 (123) 456 78 80</div>
+            </div>
+        </div>
+    </footer>
+    <script>
+    const API_BASE = '/api';
+
+    let matchmakingInterval = null;
+    let pingInterval = null;
+    let pollInterval = null;
+    let onlineStatsInterval = null;
+
+    let searchSeconds = 0;
+    let currentMatchId = null;
+    let selectedDifficulty = 'medium';
+    let isSearching = false;
+
+    const startBtn = document.getElementById('startSearchBtn');
+    const statusDiv = document.getElementById('searchStatus');
+    const statusText = document.getElementById('statusText');
+    const searchTimer = document.getElementById('searchTimer');
+
+    const matchFound = document.getElementById('matchFound');
+    const opponentName = document.getElementById('opponentName');
+    const opponentElo = document.getElementById('opponentElo');
+    const taskTitle = document.getElementById('taskTitle');
+    const taskDifficultyEl = document.getElementById('taskDifficulty');
+
+    const acceptBtn = document.getElementById('acceptMatchBtn');
+    const cancelMatchBtn = document.getElementById('cancelMatchBtn');
+
+    const totalPlayers = document.getElementById('totalPlayers');
+    const totalInQueue = document.getElementById('totalInQueue');
+    const totalOnline = document.getElementById('totalOnline');
+
+    /* сложности */
+    function selectDifficulty(difficulty) {
+        if (isSearching && selectedDifficulty !== difficulty) {
+            cancelMatchmaking().then(() => setSelectedDifficulty(difficulty));
+        } else {
+            setSelectedDifficulty(difficulty);
+        }
+    }
+
+    function setSelectedDifficulty(difficulty) {
+        selectedDifficulty = difficulty;
+        document.querySelectorAll('.difficulty_card').forEach(c => c.classList.remove('selected'));
+        document.querySelector(`[data-difficulty="${difficulty}"]`).classList.add('selected');
+    }
+
+    /* кнопка */
+    function updateSearchButton(searching) {
+        startBtn.textContent = searching ? 'Отменить поиск' : 'Найти противника';
+    }
+
+    /* поиск */
+    async function startMatchmaking() {
+        if (isSearching) {
+            await cancelMatchmaking();
+            return;
+        }
+
+        updateSearchButton(true);
+
+        const r = await fetch(`${API_BASE}/matchmaking/start`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ difficulty: selectedDifficulty })
+        });
+
+        const d = await r.json();
+        isSearching = true;
+
+        if (d.match_found) {
+            // Матч мог создаться сразу (когда вы нашли ожидающего соперника).
+            // В таком случае сразу переходим в арену.
+            currentMatchId = d.match_id;
+            cleanupBeforeRedirect();
+            window.location.href = `/duel/${currentMatchId}`;
+            return;
+        } else {
+            startMatchmakingUI();
+            startPolling();
+            loadOnlineStats();
+        }
+    }
+
+    async function cancelMatchmaking() {
+        await fetch(`${API_BASE}/matchmaking/cancel`, { method: 'POST' });
+        resetMatchmaking();
+    }
+
+    function resetMatchmaking() {
+        clearInterval(matchmakingInterval);
+        clearInterval(pingInterval);
+        clearInterval(pollInterval);
+        isSearching = false;
+        statusDiv.classList.add('hidden');
+        updateSearchButton(false);
+    }
+
+    // Clear timers/pollers before leaving the page.
+    function cleanupBeforeRedirect() {
+        clearInterval(matchmakingInterval);
+        clearInterval(pingInterval);
+        clearInterval(pollInterval);
+        clearInterval(onlineStatsInterval);
+    }
+
+    /* UI */
+    function startMatchmakingUI() {
+        searchSeconds = 0;
+        statusDiv.classList.remove('hidden');
+        matchFound.classList.add('hidden');
+        statusText.textContent = 'Подбираем соперника...';
+        searchTimer.textContent = '0:00';
+        matchmakingInterval = setInterval(updateSearchTime, 1000);
+        startPing();
+    }
+
+    function updateSearchTime() {
+        searchSeconds++;
+        const m = Math.floor(searchSeconds / 60);
+        const s = searchSeconds % 60;
+        searchTimer.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    /* ping (держим запись в очереди живой) */
+    function startPing() {
+        if (pingInterval) clearInterval(pingInterval);
+        // Сразу пингуем один раз
+        fetch(`${API_BASE}/matchmaking/ping`, { method: 'POST' }).catch(() => {});
+        // И дальше регулярно
+        pingInterval = setInterval(() => {
+            fetch(`${API_BASE}/matchmaking/ping`, { method: 'POST' }).catch(() => {});
+        }, 15000);
+    }
+
+    /* poll */
+    function startPolling() {
+        pollInterval = setInterval(pollForMatch, 3000);
+    }
+
+    async function pollForMatch() {
+        if (!isSearching) return;
+        const r = await fetch(`${API_BASE}/matchmaking/poll`);
+        const d = await r.json();
+        if (d.queue_stats && typeof d.queue_stats.total_players === 'number') {
+            totalPlayers.textContent = d.queue_stats.total_players;
+            totalInQueue.textContent = d.queue_stats.total_players;
+        }
+        if (d.match_found) {
+            clearInterval(pollInterval);
+            currentMatchId = d.match_id;
+            // Матч найден для игрока, который ждал в очереди — переходим в арену.
+            cleanupBeforeRedirect();
+            window.location.href = `/duel/${currentMatchId}`;
+            return;
+        }
+    }
+
+    /* найден */
+    function showMatchFound(opponent, title, difficulty) {
+        opponentName.textContent = opponent.username;
+        opponentElo.textContent = `ELO: ${opponent.elo}`;
+        taskTitle.textContent = title;
+        taskDifficultyEl.textContent = `Сложность: ${difficulty}`;
+        matchFound.classList.remove('hidden');
+    }
+
+    /* онлайн */
+    async function loadOnlineStats() {
+        const r = await fetch(`${API_BASE}/online_players`);
+        const d = await r.json();
+        // "Ищут матч" (внизу) + "Игроков в очереди" (в статусе поиска)
+        totalInQueue.textContent = d.total_in_queue;
+        totalPlayers.textContent = d.total_in_queue;
+        totalOnline.textContent = d.total_online;
+    }
+
+    
+
+    async function resumeMatchmakingIfNeeded() {
+        try {
+            const r = await fetch(`${API_BASE}/matchmaking/poll`);
+            const d = await r.json();
+            if (d.match_found) {
+                cleanupBeforeRedirect();
+                window.location.href = `/duel/${d.match_id}`;
+                return;
+            }
+            if (d.in_queue) {
+                isSearching = true;
+                updateSearchButton(true);
+                startMatchmakingUI();
+                startPolling();
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+/* init */
+    document.addEventListener('DOMContentLoaded', () => {
+        loadOnlineStats();
+        resumeMatchmakingIfNeeded();
+        onlineStatsInterval = setInterval(loadOnlineStats, 5000);
+        startBtn.onclick = startMatchmaking;
+        // Кнопка "Принять" оставлена на случай, если захочешь показывать карточку матча,
+        // но сейчас матчмейкинг автоматически переводит в арену.
+        acceptBtn.onclick = () => window.location.href = `/duel/${currentMatchId}`;
+        cancelMatchBtn.onclick = cancelMatchmaking;
+    });
+    </script>
+
+</body>
+</html>

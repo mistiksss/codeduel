@@ -1,0 +1,306 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 73px;
+    font-family: 'Source Code Pro', monospace;
+    color: #b8b8b8;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+        url('Matrix-Code-PNG-Image.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #0A0A0A;
+}
+
+.container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width: 100%;
+    height: 73px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2C2C2C;
+    border-radius: 0 0 5px 5px;
+}
+
+.header_left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header_icon {
+    width: 30px;
+    height: 28px;
+    background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+    background-position: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+}
+
+.header_name {
+    font-size: 25px;
+    color: #fff;
+}
+
+.header_right {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.header_center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 16px;
+}
+
+.active_match_banner {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 18px;
+    border: 1px solid #00D4FF;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.active_match_banner:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.header_link {
+    font-size: 17px;
+    color: white;
+    text-decoration: none;
+}
+
+.header_link:hover {
+    color: #00D4FF;
+}
+
+.btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 24px;
+    background: #00D4FF;
+    font-size: 16px;
+    color: #000;
+    text-decoration: none;
+}
+
+.btn:hover {
+    background: white;
+}
+
+main {
+    flex: 1;
+    padding: 40px 0 60px;
+}
+
+.profile_header {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 40px;
+    background: #1D1D1D;
+    border-radius: 15px;
+    padding: 30px;
+}
+
+.avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #2A2A2A;
+}
+
+.profile_info {
+    flex: 1;
+}
+
+.username {
+    font-size: 36px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.user_title {
+    font-size: 18px;
+    color: #00D4FF;
+    margin-bottom: 20px;
+}
+
+.profile_stats {
+    display: flex;
+    gap: 40px;
+}
+
+.stat_item {
+    text-align: center;
+}
+
+.stat_value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.stat_label {
+    font-size: 14px;
+    color: #b8b8b8;
+}
+
+.cards_container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: #1D1D1D;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    background: rgba(18, 18, 18);
+}
+
+.card_icon {
+    font-size: 40px;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2A2A2A;
+    border-radius: 12px;
+}
+
+.card_content {
+    flex: 1;
+}
+
+.card_content h3 {
+    font-size: 16px;
+    color: #b8b8b8;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.card_value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.card_detail {
+    font-size: 14px;
+    color: #b8b8b8;
+}
+
+footer {
+	height: 70px;
+	padding: 0 60px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #2C2C2C;
+	color: #fff;
+	font-family: 'Source Code Pro', monospace;
+}
+
+.footer_left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	font-weight: 500;
+	font-size: 18px;
+}
+
+.footer_icon {
+    width: 30px;
+    height: 30px;
+    background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.footer_right {
+	display: flex;
+	align-items: center;
+	gap: 40px;
+}
+
+.contact {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	white-space: nowrap;
+}
+
+.icon_mail {
+	width: 20px;
+	height: 20px;
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>');
+	background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.icon_phone {
+	width: 20px;
+	height: 20px;
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>');
+	background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.email {
+	font-weight: 700;
+	font-size: 18px;
+	color: #fff;
+	text-decoration: none;
+}
+
+.phone {
+	font-weight: 700;
+	font-size: 18px;
+	color: #fff;
+}

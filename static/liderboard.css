@@ -1,0 +1,290 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 73px;
+    font-family: 'Source Code Pro', monospace;
+    color: #b8b8b8;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+        url('Matrix-Code-PNG-Image.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #0A0A0A;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width: 100%;
+    height: 73px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2C2C2C;
+    border-radius: 0 0 5px 5px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-icon {
+    width: 30px;
+    height: 28px;
+    background: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png') center/contain no-repeat;
+}
+
+.header-name {
+    font-size: 25px;
+    color: #fff;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.header-link {
+    font-size: 17px;
+    color: white;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.header-link:hover {
+    color: #00D4FF;
+}
+
+main {
+    flex: 1;
+    padding: 40px 0 60px;
+}
+
+.leaderboard-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.leaderboard-header h1 {
+    font-size: 48px;
+    color: #FFFFFF;
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+
+.leaderboard-container {
+    background: #1D1D1D;
+    border-radius: 15px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.leaderboard-header-row {
+    display: flex;
+    padding: 20px;
+    background: #2C2C2C;
+    border-bottom: 2px solid #00D4FF;
+    font-weight: 600;
+    color: #00D4FF;
+    font-size: 16px;
+}
+
+.leaderboard {
+    display: flex;
+    padding: 20px;
+    border-bottom: 1px solid #2C2C2C;
+    align-items: center;
+    transition: background 0.3s ease;
+    min-height: 60px;
+}
+
+.leaderboard:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Золото - 1 место */
+.leaderboard.gold {
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%) !important;
+}
+
+.leaderboard.gold .rank {
+    color: #FFD700;
+}
+
+.leaderboard.gold .username {
+    color: #FFD700;
+}
+
+.leaderboard.gold:hover {
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 215, 0, 0.15) 100%) !important;
+}
+
+/* Серебро - 2 место */
+.leaderboard.silver {
+    background: linear-gradient(90deg, rgba(192, 192, 192, 0.15) 0%, rgba(192, 192, 192, 0.05) 100%) !important;
+}
+
+.leaderboard.silver .rank {
+    color: #C0C0C0;
+}
+
+.leaderboard.silver .username {
+    color: #C0C0C0;
+}
+
+.leaderboard.silver:hover {
+    background: linear-gradient(90deg, rgba(192, 192, 192, 0.25) 0%, rgba(192, 192, 192, 0.15) 100%) !important;
+}
+
+/* Бронза - 3 место */
+.leaderboard.bronze {
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.15) 0%, rgba(205, 127, 50, 0.05) 100%) !important;
+}
+
+.leaderboard.bronze .rank {
+    color: #CD7F32;
+}
+
+.leaderboard.bronze .username {
+    color: #CD7F32;
+}
+
+.leaderboard.bronze:hover {
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.25) 0%, rgba(205, 127, 50, 0.15) 100%) !important;
+}
+.current-user {
+    background: rgba(0, 212, 255, 0.15) !important;
+}
+
+.current-user:hover {
+    background: rgba(0, 212, 255, 0.25) !important;
+}
+
+.rank-header {
+    width: 80px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.rank {
+    width: 80px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.name-header {
+    flex: 1;
+    font-weight: 600;
+}
+
+.username {
+    flex: 1;
+    font-weight: 600;
+    font-size: 18px;
+    color: #fff;
+}
+
+.elo-header {
+    width: 120px;
+    text-align: center;
+    flex-shrink: 0;
+    font-weight: 600;
+}
+
+.elo {
+    width: 120px;
+    text-align: center;
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 18px;
+    color: #10B981;
+}
+
+footer {
+    height: 70px;
+    padding: 0 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2C2C2C;
+    color: #fff;
+    font-family: 'Source Code Pro', monospace;
+}
+
+.footer-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-weight: 500;
+    font-size: 18px;
+}
+
+.footer-icon {
+    width: 30px;
+    height: 30px;
+    background: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png') center/contain no-repeat;
+}
+
+.footer-right {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.contact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.icon-mail {
+    width: 20px;
+    height: 20px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>') center/contain no-repeat;
+}
+
+.icon-phone {
+    width: 20px;
+    height: 20px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>') center/contain no-repeat;
+}
+
+.email {
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.phone {
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+}

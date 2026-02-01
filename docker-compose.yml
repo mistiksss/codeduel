@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: code_duel_app
+    environment:
+      - DATABASE_URL=postgresql://postgres:54321@host.docker.internal:5432/code_duel
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - SECRET_KEY=ea895771cd548603ffeb0f919568488deede3e855285883bb5c55c6b484c13cc
+      - JUDGE0_URL=http://judge0:2358
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    depends_on:
+      - judge0
+    command: >
+      sh -c "python app.py"
+
+  judge0:
+    image: judge0/judge0:latest
+    container_name: judge0
+    ports:
+      - "2358:2358"
+    environment:
+      - JUDGE0_HOST=0.0.0.0
+    restart: always

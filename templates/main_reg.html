@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeDuel</title>
+    <link rel="stylesheet" href="../static/main_reg.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <header>
+        <div class="header_left">
+            <div class="header_icon"></div>
+            <div class="header_name">CodeDuel</div>
+        </div>
+        <div class="header_center">
+            {% if active_match_id %}
+                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
+                    У вас есть активный матч
+                </a>
+            {% endif %}
+        </div>
+        <div class="header_right">
+            <a href="{{ url_for('profile') }}" class="header_link">Профиль</a>
+            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
+            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
+            <a href="{{ url_for('tasks') }}" class="btn">Задачи</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="big">
+                <h1>Соревнуйся в<br>программировании 1 на 1!</h1>
+                <div class="text text_1">Реальные задачи.</div>
+                <div class="text text_2">Реальные соперники.</div>
+                <div class="text text_3">Реальный рейтинг.</div>
+                <div class="btns">
+                    <a href="{{ url_for('matchmaking_page') }}" class="btn_start">Начать матч</a>
+                    <a href="{{ url_for('tasks')}}" class="btn_train">Задачи</a>
+                </div>
+                <div class="im">
+                    <canvas id="modelCanvas"></canvas>
+                </div>
+            </div>
+            <div class="card_text">
+                <div class="card">
+                    <h3>Дуэли в реальном времени</h3>
+                    <p>Онлайн-дуэли с живыми соперниками. Видите прогресс противника в реальном времени, как в киберспорте!</p>
+                </div>
+                <div class="card">
+                    <h3>Рейтинговая система ELO</h3>
+                    <p>Честная система прогресса. За каждый матч получаете или теряете очки ELO в зависимости от результата.</p>
+                </div>
+                <div class="card">
+                    <h3>Встроенный редактор кода</h3>
+                    <p>Профессиональная среда разработки. Поддержка Python, JavaScript, C++ и других языков с автодополнением.</p>
+                </div>
+                <div class="card">
+                    <h3>Быстрый матчмейкинг</h3>
+                    <p>Подбор соперника за 10–30 секунд по уровню навыков. Продолжительность матча зависит от сложности.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer_left">
+            <div class="footer_icon"></div>
+            <div>Соревновательная платформа</div>
+        </div>
+        <div class="footer_right">
+            <div class="contact">Связаться с нами:</div>
+            <div class="contact">
+                <div class="icon_mail"></div>
+                <a href="mailto:info@codeduel.com" class="email">info@codeduel.com</a>
+            </div>
+            <div class="contact">
+                <div class="icon_phone"></div>
+                <div class="phone">+1 (123) 456 78 80</div>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const canvas = document.getElementById('modelCanvas');
+        const scene = new THREE.Scene();
+        scene.background = null;
+
+        const camera = new THREE.PerspectiveCamera(
+            45,
+            canvas.clientWidth / canvas.clientHeight,
+            0.1,
+            1000
+        );
+        camera.position.set(5, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            alpha: true,
+            antialias: true
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(10, 20, 15);
+        scene.add(directionalLight);
+
+        let currentModel = null;
+
+        const loader = new GLTFLoader();
+        const modelUrl = "{{ url_for('static', filename='models/samsung_series_9_notebook_1768.glb') }}";
+
+        loader.load(
+            modelUrl,
+            function(gltf) {
+                const model = gltf.scene;
+
+                const box = new THREE.Box3().setFromObject(model);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
+
+                const scale = 14.4;
+                model.scale.setScalar(scale);
+
+                box.setFromObject(model);
+                const newCenter = box.getCenter(new THREE.Vector3());
+
+                const modelContainer = new THREE.Group();
+                modelContainer.add(model);
+
+                model.position.x = -newCenter.x;
+                model.position.y = -newCenter.y + 0.5;
+                model.position.z = -newCenter.z;
+
+                scene.add(modelContainer);
+                currentModel = modelContainer;
+
+                camera.position.set(0, 2, 8);
+                camera.lookAt(0, 0, 0);
+                controls.target.set(0, 0, 0);
+                controls.update();
+            },
+            undefined,
+            function(error) {
+                const laptopGroup = new THREE.Group();
+
+                const baseGeometry = new THREE.BoxGeometry(2.0, 0.15, 1.4);
+                const baseMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const base = new THREE.Mesh(baseGeometry, baseMaterial);
+                base.position.set(0, 0, 0);
+                laptopGroup.add(base);
+
+                const screenGeometry = new THREE.BoxGeometry(1.9, 1.2, 0.03);
+                const screenMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x000000,
+                    emissive: 0x00D4FF,
+                    emissiveIntensity: 0.5
+                });
+                const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+                screen.position.set(0, 0.6, 0.65);
+                screen.rotation.x = -0.25;
+                laptopGroup.add(screen);
+
+                const keyboardGeometry = new THREE.BoxGeometry(1.95, 0.03, 1.35);
+                const keyboardMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x111111,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const keyboard = new THREE.Mesh(keyboardGeometry, keyboardMaterial);
+                keyboard.position.set(0, 0.09, 0);
+                laptopGroup.add(keyboard);
+
+                const touchpadGeometry = new THREE.BoxGeometry(0.5, 0.02, 0.3);
+                const touchpadMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+                const touchpad = new THREE.Mesh(touchpadGeometry, touchpadMaterial);
+                touchpad.position.set(0, 0.10, -0.4);
+                laptopGroup.add(touchpad);
+
+                const backlightGeometry = new THREE.BoxGeometry(1.96, 0.01, 1.36);
+                const backlightMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00D4FF,
+                    transparent: true,
+                    opacity: 0.1
+                });
+                const backlight = new THREE.Mesh(backlightGeometry, backlightMaterial);
+                backlight.position.set(0, 0.11, 0);
+                laptopGroup.add(backlight);
+
+                scene.add(laptopGroup);
+                currentModel = laptopGroup;
+
+                camera.position.set(0, 1, 5);
+                camera.lookAt(0, 0, 0);
+                controls.target.set(0, 0, 0);
+                controls.update();
+            }
+        );
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if (currentModel) {
+                currentModel.rotation.y += 0.002;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        }
+
+        window.addEventListener('resize', onWindowResize);
+        animate();
+    </script>
+</body>
+</html>

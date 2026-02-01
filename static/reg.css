@@ -1,0 +1,110 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 73px;
+    font-family: 'Source Code Pro', monospace;
+    color: #b8b8b8;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+        url('Matrix-Code-PNG-Image.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #0A0A0A;
+}
+
+.login_container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login_card {
+    background-color: #1D1D1D;
+    border-radius: 15px;
+    padding: 40px;
+    max-width: 400px;
+    width: 100%;
+}
+
+.login_title {
+    color: #fff;
+    font-size: 32px;
+    font-weight: 500;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.login_form {
+    margin-bottom: 25px;
+}
+
+.form_input {
+    width: 100%;
+    padding: 15px;
+    background-color: #2C2C2C;
+    border: 1px solid #454545;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.form_input:focus {
+    outline: none;
+    border-color: #00D4FF;
+}
+
+.form_input::placeholder {
+    color: #666;
+}
+
+.login_btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    background-color: #00D4FF;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+    text-decoration: none;
+}
+
+.register_section {
+    text-align: center;
+}
+
+.register_btn {
+    display: inline-block;
+    padding: 12px 30px;
+    background-color: transparent;
+    color: #00D4FF;
+    border: 2px solid #00D4FF;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.register_btn:hover {
+    background-color: #00D4FF;
+    color: #000;
+}

@@ -1,0 +1,559 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 73px;
+    font-family: 'Source Code Pro', monospace;
+    color: #b8b8b8;
+    background-image: linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)), url('../static/Matrix-Code-PNG-Image.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #0A0A0A;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 40px auto 0;
+    padding: 24px;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width: 100%;
+    height: 73px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #2C2C2C;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.header_left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header_icon {
+    width: 30px;
+    height: 28px;
+    background: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png') center / contain no-repeat;
+}
+
+.header_name {
+    font-size: 25px;
+    color: #fff;
+}
+
+.header_right {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.header_center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 16px;
+}
+
+.active_match_banner {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 18px;
+    border: 1px solid #00D4FF;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    font-size: 14px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.active_match_banner:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.header_link {
+    font-size: 17px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.header_link:hover {
+    color: #00D4FF;
+}
+
+.btn {
+    padding: 10px 24px;
+    border-radius: 24px;
+    background-color: #00D4FF;
+    font-size: 16px;
+    color: #000;
+    text-decoration: none;
+}
+
+.btn:hover {
+    background: #fff;
+}
+
+main {
+    flex: 1;
+    padding: 27px 0 60px;
+}
+
+.matchmaking_header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.matchmaking_header h1 {
+    font-size: 48px;
+    color: #fff;
+    margin-bottom: 16px;
+}
+
+.matchmaking_header p {
+    font-size: 18px;
+    color: #b8b8b8;
+}
+
+.user_stats {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.stat_card {
+    padding: 20px;
+    border-radius: 16px;
+    background-color: #2C2C2C;
+    text-align: center;
+    min-width: 150px;
+    border: 1px solid #444;
+}
+
+.stat_value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.stat_label {
+    font-size: 14px;
+    color: #b8b8b8;
+}
+
+.difficulty_section {
+    margin-bottom: 40px;
+}
+
+.section_title {
+    font-size: 24px;
+    color: #fff;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.difficulty_grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.difficulty_card {
+    padding: 24px;
+    border-radius: 16px;
+    background-color: #2C2C2C;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #444;
+}
+
+.difficulty_card:hover {
+    background-color: #3C3C3C;
+    transform: translateY(-3px);
+}
+
+.difficulty_card.selected {
+    background-color: #3C3C3C;
+    border-color: #666;
+}
+
+.difficulty_icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+}
+
+.difficulty_card h3 {
+    font-size: 20px;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.difficulty_card p {
+    color: #b8b8b8;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.points_badge {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: #444;
+    color: #fff;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.search_section {
+    margin: 40px 0;
+    text-align: center;
+}
+
+.search_button {
+    width: 100%;
+    max-width: 400px;
+    padding: 24px 32px;
+    background-color: #00D4FF;
+    border: none;
+    border-radius: 24px;
+    color: #000;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+    /* Убрано изменение цвета при наведении */
+}
+
+/* HOVER эффект только для transform (поднятие кнопки) */
+.search_button:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+}
+
+.search_button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.search_button.searching {
+    background-color: #EF4444;
+    color: #fff;
+}
+
+.search_button.searching:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+}
+
+.search_button.searching .button_icon {
+    color: #fff;
+}
+
+.button_text {
+    font-weight: 700;
+}
+
+.button_icon {
+    font-size: 24px;
+}
+
+.search_status {
+    padding: 40px;
+    border-radius: 16px;
+    background-color: #2C2C2C;
+    margin-top: 20px;
+    text-align: center;
+    border: 1px solid #444;
+}
+
+.status_header {
+    margin-bottom: 30px;
+}
+
+.status_text {
+    font-size: 28px;
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.timer {
+    font-size: 48px;
+    color: #00D4FF;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.search_stats {
+    background-color: #1C1C1C;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid #444;
+}
+
+.stat_row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #444;
+}
+
+.stat_row:last-child {
+    border-bottom: none;
+}
+
+.stat_label {
+    color: #b8b8b8;
+}
+
+.stat_value {
+    color: #fff;
+    font-weight: 600;
+}
+
+.match_found {
+    margin: 30px 0;
+}
+
+.opponent_card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background-color: #1C1C1C;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid #444;
+}
+
+.opponent_avatar {
+    font-size: 48px;
+}
+
+.opponent_info {
+    text-align: left;
+}
+
+.opponent_name {
+    font-size: 24px;
+    color: #fff;
+    font-weight: 700;
+}
+
+.opponent_elo {
+    color: #b8b8b8;
+    font-weight: 600;
+}
+
+.task_info {
+    background-color: #1C1C1C;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 30px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid #444;
+}
+
+.task_title {
+    font-size: 18px;
+    color: #fff;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.task_difficulty {
+    color: #b8b8b8;
+    font-weight: 600;
+}
+
+.action_buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.accept_button {
+    padding: 16px 32px;
+    background-color: #10B981;
+    border: none;
+    border-radius: 24px;
+    color: #000;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.accept_button:hover {
+    background-color: #0da271;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+}
+
+.cancel_button {
+    padding: 16px 32px;
+    background-color: transparent;
+    border: 1px solid #666;
+    border-radius: 24px;
+    color: #b8b8b8;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.cancel_button:hover {
+    background-color: #333;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 102, 102, 0.2);
+}
+
+.online_stats {
+    margin-top: 60px;
+    padding: 30px;
+    border-radius: 16px;
+    background-color: #2C2C2C;
+    border: 1px solid #444;
+}
+
+.online_stats .section_title {
+    margin-bottom: 30px;
+}
+
+.stats_grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.online_stat {
+    text-align: center;
+    padding: 20px;
+    background-color: #1C1C1C;
+    border-radius: 12px;
+    border: 1px solid #444;
+}
+
+.online_stat .stat_number {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.online_stat .stat_label {
+    color: #b8b8b8;
+    font-size: 14px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.hidden {
+    display: none !important;
+}
+
+footer {
+    height: 70px;
+    padding: 0 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #2C2C2C;
+    color: #fff;
+    border-top: 1px solid #444;
+}
+
+.footer_left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 18px;
+}
+
+.footer_icon {
+    width: 30px;
+    height: 30px;
+    background: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png') center / contain no-repeat;
+}
+
+.footer_right {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.contact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.icon_mail,
+.icon_phone {
+    width: 20px;
+    height: 20px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.icon_mail {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>');
+}
+
+.icon_phone {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>');
+}
+
+.email,
+.phone {
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+    text-decoration: none;
+}

@@ -1,0 +1,302 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600;700&display=swap');
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 73px;
+    font-family: 'Source Code Pro', monospace;
+    color: #b8b8b8;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+        url('Matrix-Code-PNG-Image.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #0A0A0A;
+}
+
+.container {
+	max-width: 1440px;
+	margin: 0 auto;
+	padding: 0 24px;
+}
+
+header {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 1000;
+	width: 100%;
+	height: 73px;
+	padding: 0 24px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background-color: #2C2C2C;
+	border-bottom-right-radius: 5px;
+	border-bottom-left-radius: 5px;
+}
+
+.header_left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.trophy_icon {
+	width: 30px;
+	height: 28px;
+	background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+	background-position: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+}
+
+.logo {
+	font-size: 25px;
+	color: white;
+	font-weight: 500;
+}
+
+.header_right {
+	display: flex;
+	align-items: center;
+	gap: 40px;
+}
+
+.header_link {
+	font-size: 17px;
+	color: white;
+	text-decoration: none;
+	font-weight: 500;
+	padding: 8px 0;
+	position: relative;
+}
+
+.header_link:hover {
+	color: #00D4FF;
+}
+
+.btn {
+	padding: 10px 24px;
+	border-radius: 24px;
+	background-color: #00D4FF;
+	font-size: 16px;
+	color: black;
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.btn:hover {
+    background: white;
+}
+
+main {
+	flex: 1;
+	padding: 27px 0 60px;
+	position: relative;
+	z-index: 1;
+}
+
+.about {
+	text-align: center;
+	max-width: 800px;
+	margin: 0 auto 80px;
+	position: relative;
+}
+
+.about h1 {
+	font-size: 52px;
+	color: #00D4FF;
+	margin: 0 0 20px;
+	font-weight: 700;
+}
+
+.about p {
+	color: #b8b8b8;
+	font-size: 18px;
+	line-height: 1.6;
+	margin: 0;
+}
+
+h2 {
+	text-align: center;
+	color: #10B981;
+	font-size: 32px;
+	margin: 0 0 30px;
+	font-weight: 700;
+}
+
+.mission {
+	margin-bottom: 80px;
+}
+
+.card {
+	background-color: #2C2C2C;
+	border-radius: 16px;
+	padding: 32px;
+	color: #ffffff;
+	font-size: 18px;
+	line-height: 1.7;
+	text-align: center;
+	max-width: 800px;
+	margin: 0 auto;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.team {
+	margin-bottom: 80px;
+}
+
+.t_card {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 40px;
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.team_member {
+	background-color: #2C2C2C;
+	border-radius: 16px;
+	padding: 32px;
+	text-align: center;
+	color: #ffffff;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.member_photo {
+	width: 150px;
+	height: 150px;
+	border-radius: 75px;
+	background-color: gray;
+	margin: 0 auto 20px;
+}
+
+.team_member h3 {
+	color: #ffffff;
+	margin: 0 0 8px;
+	font-size: 24px;
+	font-weight: 600;
+}
+
+.team_member {
+	color: #ffffff;
+	font-size: 18px;
+	font-weight: 500;
+	margin: 0;
+}
+
+.adv {
+	margin-bottom: 80px;
+}
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 30px;
+}
+
+.a_card {
+	background-color: #2C2C2C;
+	border-radius: 16px;
+	padding: 32px;
+	text-align: center;
+	color: #ffffff;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.a_card h3 {
+	color: #ffffff;
+	margin: 0 0 15px;
+	font-size: 22px;
+	font-weight: 600;
+}
+
+.a_card p {
+	color: #b8b8b8;
+	font-size: 16px;
+	line-height: 1.6;
+	margin: 0;
+}
+
+footer {
+	height: 70px;
+	padding: 0 60px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #2C2C2C;
+	color: #fff;
+	font-family: 'Source Code Pro', monospace;
+}
+
+.footer_left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	font-weight: 500;
+	font-size: 18px;
+}
+
+.footer_icon {
+    width: 30px;
+    height: 30px;
+    background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.footer_right {
+	display: flex;
+	align-items: center;
+	gap: 40px;
+}
+
+.contact {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	white-space: nowrap;
+}
+
+.icon_mail {
+	width: 20px;
+	height: 20px;
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>');
+	background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.icon_phone {
+	width: 20px;
+	height: 20px;
+	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>');
+	background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.email {
+	font-weight: 700;
+	font-size: 18px;
+	color: #fff;
+	text-decoration: none;
+}
+
+.phone {
+	font-weight: 700;
+	font-size: 18px;
+	color: #fff;
+}

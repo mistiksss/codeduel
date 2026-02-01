@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ task.title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/arena.css">
+</head>
+<body>
+    <header>
+        <div class="header_left">
+            <div class="header_icon"></div>
+            <div class="header_name">{{ task.title }}</div>
+        </div>
+        <div class="header_center">
+            {% if active_match_id %}
+                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
+                    У вас есть активный матч
+                </a>
+            {% endif %}
+        </div>
+        <div class="header_right">
+            <a href="{{ url_for('main_page') }}" class="header_link">Главная</a>
+            <a href="{{ url_for('tasks') }}" class="header_link">Задачи</a>
+            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
+            {% if active_match_id %}
+                <button type="button" class="btn btn_surrender" id="surrenderBtn">Сдаться</button>
+            {% endif %}
+            <a href="{{ url_for('profile') }}" class="btn">Профиль</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="problem">
+            <div class="problem_header">
+                <div class="problem_tab problem_tab_active" data-tab="condition">Условие</div>
+                <div class="problem_tab" data-tab="attempts">Попытки</div>
+            </div>
+
+            <div class="problem_content problem_content_active" id="conditionContent">
+                <div class="problem_task">
+                    <div class="problem_limite">
+                        <div>Лимит времени: {{ task.time_limit }} сек</div>
+                        <div>Лимит памяти: {{ task.memory_limit }} МБ</div>
+                    </div>
+                    <h3 class="problem_title">Условие задачи</h3>
+                    <div class="problem_description">{{ task.description }}</div>
+
+                    <h3 class="problem_title_another">Входные данные</h3>
+                    <div class="input_data">{{ task.input_description }}</div>
+
+                    <h3 class="problem_title_another">Выходные данные</h3>
+                    <div class="output_data">{{ task.output_description }}</div>
+
+                    <h3 class="problem_title_another">Примеры</h3>
+                    <div class="examples_container">
+                        {% if task.example and task.answer %}
+                            <div class="example_pair">
+                                <div class="example_section">
+                                    <div class="example_header">Ввод #1</div>
+                                    <div class="example_content copyable" data-content="{{ task.example }}">
+                                        {{ task.example|safe }}
+                                    </div>
+                                </div>
+                                <div class="example_section">
+                                    <div class="example_header">Вывод #1</div>
+                                    <div class="example_content copyable" data-content="{{ task.answer }}">
+                                        {{ task.answer|safe }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="problem_content" id="attemptsContent">
+                <div class="attempts_list">
+                    <h3 class="attempts_header">История попыток</h3>
+                    <div class="attempts_container" id="attemptsContainer">
+                        <div class="no_attempts">Загрузка истории попыток...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor_section">
+            <div class="editor_container">
+                <div class="editor_header">
+                    <div class="editor_title">Редактор</div>
+                    <div class="editor_controls">
+                        <select class="language_selector" id="languageSelector">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="cpp">C++</option>
+                            <option value="java">Java</option>
+                        </select>
+                        <button class="run_btn" id="runCode">Запустить</button>
+                        <button class="submit_btn" id="submitSolution">Отправить</button>
+                    </div>
+                </div>
+                <div class="editor_body">
+                    <div id="codeEditor" class="monaco_editor"></div>
+                </div>
+            </div>
+
+            <div class="data_container">
+                <div class="data">
+                    <div class="data_tab data_tab_active" data-tab="input">Входные данные</div>
+                    <div class="data_tab" data-tab="execution">Выполнение</div>
+                    <div class="data_tab" data-tab="testing">Тестирование</div>
+                </div>
+                <div class="data_content data_content_active" id="inputContent">
+                    <textarea class="io_textarea" id="inputData" placeholder="Введите входные данные здесь..."></textarea>
+                </div>
+                <div class="data_content" id="executionContent">
+                    <div class="execution_output" id="executionOutput">
+                        <div class="result_label">Результат:</div>
+                        <div class="result_value" id="executionResult"></div>
+                        <div class="error_label" style="display:none; color: #ff6b6b; margin-top: 10px;">Ошибка:</div>
+                        <div class="error_value" id="executionError"></div>
+                    </div>
+                </div>
+                <div class="data_content" id="testingContent">
+                    <div class="test_results_container">
+                        <div class="test_stats" id="testStats">
+                            <div class="stats_placeholder">Отправьте решение для получения результатов</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Блок матча показываем ТОЛЬКО в дуэли -->
+            {% if match %}
+            <div class="match_info">
+                <div class="match_info_content">
+                    <h3>Текущий матч</h3>
+                    <div class="match_status" id="matchStatus">
+                        <div class="match_status_item">
+                            <span class="match_status_label">Статус:</span>
+                            <span class="match_status_value" id="currentMatchStatus">Нет активного матча</span>
+                        </div>
+                    </div>
+                    <div class="opponent_stats" id="opponentStats">
+                        <div class="opponent_item">
+                            <span class="opponent_label">Противник:</span>
+                            <span class="opponent_value" id="opponentName">-</span>
+                        </div>
+                        <div class="opponent_item">
+                            <span class="opponent_label">ELO:</span>
+                            <span class="opponent_value" id="opponentElo">-</span>
+                        </div>
+                        <div class="opponent_item">
+                            <span class="opponent_label">Баллы:</span>
+                            <span class="opponent_value" id="opponentScore">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </main>
+
+    <!-- Всплывающее окно результата матча -->
+    <div class="result_overlay" id="resultOverlay" style="display:none;">
+        <div class="result_modal">
+            <div class="result_modal_header" id="resultTitle">Матч завершён</div>
+            <div class="result_modal_body" id="resultBody"></div>
+            <div class="result_modal_actions">
+                <a class="result_btn" href="{{ url_for('matchmaking_page') }}">В матчмейкинг</a>
+                <button class="result_btn secondary" id="resultCloseBtn" type="button">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/monaco-editor@0.33.0/min/vs/loader.js"></script>
+    <script>
+    require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.33.0/min/vs' }});
+
+    require(['vs/editor/editor.main'], function() {
+        var editor = monaco.editor.create(document.getElementById('codeEditor'), {
+            value: `def main():
+        # Введите ваш код здесь
+        n = int(input())
+        print(n * 2)
+
+    if __name__ == "__main__":
+        main()`,
+            language: 'python',
+            theme: 'vs-dark',
+            fontSize: 16,
+            fontFamily: "'Source Code Pro', monospace",
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            automaticLayout: true
+        });
+
+        let currentMatchId = null;
+        let opponentInterval = null;
+        let resultShown = false;
+
+        function humanizeResult(resultForUser) {
+            if (resultForUser === 'win') return 'ПОБЕДА';
+            if (resultForUser === 'loss') return 'ПОРАЖЕНИЕ';
+            if (resultForUser === 'draw') return 'НИЧЬЯ';
+            return 'Завершён';
+        }
+
+        function showMatchResultModal(matchStatus, onClose) {
+            if (resultShown) return;
+            resultShown = true;
+
+            const overlay = document.getElementById('resultOverlay');
+            const titleEl = document.getElementById('resultTitle');
+            const bodyEl = document.getElementById('resultBody');
+            const closeBtn = document.getElementById('resultCloseBtn');
+            if (!overlay || !titleEl || !bodyEl) return;
+
+            const resultForUser = matchStatus.result_for_user || matchStatus.result;
+            const title = humanizeResult(resultForUser);
+            titleEl.textContent = title;
+
+            const myPassed = (matchStatus.tests_passed_for_user ?? 0) || 0;
+            const myTotal = (matchStatus.total_tests_for_user ?? 0) || 0;
+            const oppPassed = (matchStatus.tests_passed_for_opponent ?? 0) || 0;
+            const oppTotal = (matchStatus.total_tests_for_opponent ?? 0) || 0;
+
+            const myChange = matchStatus.rating_change_for_user;
+
+            const myChangeText = (typeof myChange === 'number') ? (myChange >= 0 ? `+${myChange}` : `${myChange}`) : '0';
+            
+
+            bodyEl.innerHTML = `
+                <div style="margin-bottom:10px;">
+                    Пройдено тестов: <b>${myPassed}/${myTotal}</b><br/>
+                    Пройдено тестов соперника: <b>${oppPassed}/${oppTotal}</b>
+                </div>
+                <div style="opacity:0.95;">
+                    Изменение рейтинга: <b>${myChangeText}</b><br/>
+                </div>
+            `;
+
+            overlay.style.display = 'flex';
+            const close = () => {
+                overlay.style.display = 'none';
+                if (typeof onClose === 'function') onClose();
+            };
+            if (closeBtn) closeBtn.onclick = close;
+            overlay.onclick = (e) => {
+                if (e.target === overlay) close();
+            };
+        }
+
+
+        async function loadAttemptsHistory() {
+            try {
+                const response = await fetch(`/api/tasks/{{ task.id }}/attempts`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const attempts = await response.json();
+                    displayAttempts(attempts);
+                } else {
+                    document.getElementById('attemptsContainer').innerHTML =
+                        '<div class="no_attempts">Ошибка загрузки истории</div>';
+                }
+            } catch (error) {
+                document.getElementById('attemptsContainer').innerHTML =
+                    '<div class="no_attempts">Ошибка загрузки истории</div>';
+            }
+        }
+
+        function displayAttempts(attempts) {
+            const container = document.getElementById('attemptsContainer');
+
+            if (!attempts || attempts.length === 0) {
+                container.innerHTML = '<div class="no_attempts">Пока нет отправленных решений</div>';
+                return;
+            }
+
+            let html = '';
+            attempts.forEach(attempt => {
+                const statusClass = getStatusClass(attempt.status);
+                const statusText = getStatusText(attempt.status);
+                const date = new Date(attempt.submitted_at).toLocaleString('ru-RU');
+
+                const testsInfo = attempt.tests_passed !== null && attempt.total_tests !== null
+                    ? `${attempt.tests_passed}/${attempt.total_tests}`
+                    : '-';
+
+                const execTime = attempt.execution_time ? `${attempt.execution_time.toFixed(3)} сек` : '-';
+
+                html += `
+                    <div class="attempt_item">
+                        <div class="attempt_main">
+                            <div class="attempt_date">${date}</div>
+                            <div class="attempt_status ${statusClass}">${statusText}</div>
+                        </div>
+                        <div class="attempt_details">
+                            <div class="attempt_detail">
+                                <span class="detail_label">Язык:</span>
+                                <span class="detail_value">${attempt.language}</span>
+                            </div>
+                            <div class="attempt_detail">
+                                <span class="detail_label">Время:</span>
+                                <span class="detail_value">${execTime}</span>
+                            </div>
+                            <div class="attempt_detail">
+                                <span class="detail_label">Тесты:</span>
+                                <span class="detail_value">${testsInfo}</span>
+                            </div>
+                            ${attempt.score !== null ? `
+                            <div class="attempt_detail">
+                                <span class="detail_label">Баллы:</span>
+                                <span class="detail_value">${attempt.score}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function getStatusClass(status) {
+            const statusMap = {
+                'accepted': 'success',
+                'partially_correct': 'warning',
+                'wrong_answer': 'error',
+                'time_limit': 'error',
+                'runtime_error': 'error',
+                'compilation_error': 'error',
+                'pending': 'pending',
+                'testing': 'pending'
+            };
+            return statusMap[status] || 'pending';
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'accepted': 'Принято',
+                'partially_correct': 'Частично верно',
+                'wrong_answer': 'Неверный ответ',
+                'time_limit': 'Превышено время',
+                'runtime_error': 'Ошибка выполнения',
+                'compilation_error': 'Ошибка компиляции',
+                'pending': 'На проверке',
+                'testing': 'Тестируется'
+            };
+            return statusMap[status] || 'Неизвестно';
+        }
+
+
+        async function checkActiveMatch() {
+            const statusEl = document.getElementById('currentMatchStatus');
+            if (!statusEl) return;
+            {% if match %}
+            currentMatchId = {{ match.id }};
+            statusEl.textContent = 'Матч активен';
+            statusEl.className = 'match_status_value active';
+            startOpponentTracking();
+            setTimeout(updateOpponentInfo, 300);
+            return;
+            {% endif %}
+
+            // Если у тебя есть эндпоинт /api/match/active/<task_id> — оставляем как было
+            try {
+                const response = await fetch(`/api/match/active/{{ task.id }}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.match_id) {
+                    currentMatchId = data.match_id;
+                    statusEl.textContent = 'Матч активен';
+                    statusEl.className = 'match_status_value active';
+                    startOpponentTracking();
+
+                    setTimeout(updateOpponentInfo, 1000);
+                }
+            } catch (error) {
+                // Ошибка скрыта
+            }
+        }
+
+        async function updateOpponentInfo() {
+            if (!currentMatchId) return;
+
+            const nameEl = document.getElementById('opponentName');
+            const eloEl = document.getElementById('opponentElo');
+            const scoreEl = document.getElementById('opponentScore');
+            const statusEl = document.getElementById('currentMatchStatus');
+            if (!nameEl || !eloEl || !scoreEl || !statusEl) return;
+
+            try {
+                const response = await fetch(`/api/match/${currentMatchId}/opponent_info`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const opponentInfo = await response.json();
+
+                    nameEl.textContent = opponentInfo.username;
+                    eloEl.textContent = opponentInfo.elo;
+                    scoreEl.textContent = `${opponentInfo.score}/{{ task.points if task.points else "100" }}`;
+
+                    const statusResponse = await fetch(`/api/match/${currentMatchId}/status`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (statusResponse.ok) {
+                        const matchStatus = await statusResponse.json();
+
+                        if (matchStatus.result) {
+                            const resultForUser = matchStatus.result_for_user || matchStatus.result;
+                            statusEl.textContent =
+                                `Матч завершен: ${humanizeResult(resultForUser)}`;
+
+                            if (resultForUser === 'win') statusEl.className = 'match_status_value win';
+                            else if (resultForUser === 'loss') statusEl.className = 'match_status_value lose';
+                            else statusEl.className = 'match_status_value draw';
+
+                            // Всплывающее окно с итогом матча
+                            showMatchResultModal(matchStatus);
+                            stopOpponentTracking();
+                        }
+                    }
+                }
+            } catch (error) {
+            }
+        }
+
+        function startOpponentTracking() {
+            if (opponentInterval) clearInterval(opponentInterval);
+            opponentInterval = setInterval(updateOpponentInfo, 3000);
+        }
+
+        function stopOpponentTracking() {
+            if (opponentInterval) {
+                clearInterval(opponentInterval);
+                opponentInterval = null;
+            }
+        }
+
+
+        async function runCode() {
+            const code = editor.getValue();
+            const inputData = document.getElementById('inputData').value;
+            const language = document.getElementById('languageSelector').value;
+
+            document.querySelectorAll('.data_tab').forEach(t => t.classList.remove('data_tab_active'));
+            document.querySelectorAll('.data_content').forEach(c => c.classList.remove('data_content_active'));
+            document.querySelector('[data-tab="execution"]').classList.add('data_tab_active');
+            document.getElementById('executionContent').classList.add('data_content_active');
+
+            document.getElementById('executionResult').textContent = 'Выполнение...';
+            document.getElementById('executionError').textContent = '';
+            document.querySelector('.error_label').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        input_data: inputData,
+                        language: language,
+                        time_limit: {{ task.time_limit }},
+                        memory_limit: {{ task.memory_limit }}
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('executionResult').textContent = result.output || '(пустой вывод)';
+                } else {
+                    document.getElementById('executionResult').textContent = '';
+                    document.getElementById('executionError').textContent = result.error || 'Неизвестная ошибка';
+                    document.querySelector('.error_label').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('executionResult').textContent = '';
+                document.getElementById('executionError').textContent = 'Ошибка подключения к серверу';
+                document.querySelector('.error_label').style.display = 'block';
+            }
+        }
+
+        async function submitSolution() {
+            const code = editor.getValue();
+            const language = document.getElementById('languageSelector').value;
+
+            document.querySelectorAll('.data_tab').forEach(t => t.classList.remove('data_tab_active'));
+            document.querySelectorAll('.data_content').forEach(c => c.classList.remove('data_content_active'));
+            document.querySelector('[data-tab="testing"]').classList.add('data_tab_active');
+            document.getElementById('testingContent').classList.add('data_content_active');
+
+            document.getElementById('testStats').innerHTML =
+                '<div class="stats_placeholder">Тестирование начато...</div>';
+
+            try {
+                const response = await fetch('/api/solutions/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        task_id: {{ task.id }},
+                        code: code,
+                        language: language,
+                        match_id: currentMatchId || null
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    const maxScore = result.max_score || 0;
+
+                    document.getElementById('testStats').innerHTML = `
+                        <div class="stats_item">
+                            <span class="stats_label">Статус:</span>
+                            <span class="stats_value ${getStatusClass(result.status)}">${getStatusText(result.status)}</span>
+                        </div>
+                        <div class="stats_item">
+                            <span class="stats_label">Тестов пройдено:</span>
+                            <span class="stats_value">${result.tests_passed}/${result.total_tests}</span>
+                        </div>
+                        <div class="stats_item">
+                            <span class="stats_label">Баллы:</span>
+                            <span class="stats_value">${result.score}/${maxScore}</span>
+                        </div>
+                        <div class="stats_item">
+                            <span class="stats_label">Время:</span>
+                            <span class="stats_value">${result.execution_time ? result.execution_time.toFixed(3) : 0} сек</span>
+                        </div>
+                    `;
+
+                    setTimeout(loadAttemptsHistory, 1000);
+                    if (result.match_id && document.getElementById('currentMatchStatus')) {
+                        currentMatchId = result.match_id;
+                        setTimeout(updateOpponentInfo, 1500);
+                    }
+                } else {
+                    document.getElementById('testStats').innerHTML = `
+                        <div class="stats_placeholder error">Ошибка при отправке решения: ${result.error || 'Неизвестная ошибка'}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('testStats').innerHTML = `
+                    <div class="stats_placeholder error">Ошибка подключения к серверу</div>
+                `;
+            }
+        }
+
+        function cleanText(text) {
+            return text
+                .replace(/^\s+|\s+$/g, '')
+                .replace(/\n\s+/g, '\n')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText((text || '').trim()).then(function() {}, function() {});
+        }
+
+        document.querySelectorAll('.copyable').forEach(element => {
+            const originalContent = element.getAttribute('data-content');
+            element.textContent = cleanText(originalContent || '');
+
+            element.addEventListener('click', function() {
+                const content = this.getAttribute('data-content') || '';
+                copyToClipboard(content);
+                this.classList.add('copy-success');
+                setTimeout(() => this.classList.remove('copy-success'), 1000);
+            });
+        });
+
+        document.querySelectorAll('.problem_tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+
+                document.querySelectorAll('.problem_tab').forEach(t => t.classList.remove('problem_tab_active'));
+                document.querySelectorAll('.problem_content').forEach(c => {
+                    c.classList.remove('problem_content_active');
+                    c.style.display = 'none';
+                });
+
+                this.classList.add('problem_tab_active');
+                const activeContent = document.getElementById(tabId + 'Content');
+                activeContent.classList.add('problem_content_active');
+                activeContent.style.display = 'flex';
+
+                if (tabId === 'attempts') loadAttemptsHistory();
+            });
+        });
+
+        document.querySelectorAll('.data_tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.data_tab').forEach(t => t.classList.remove('data_tab_active'));
+                document.querySelectorAll('.data_content').forEach(c => c.classList.remove('data_content_active'));
+                this.classList.add('data_tab_active');
+                document.getElementById(this.getAttribute('data-tab') + 'Content')
+                    .classList.add('data_content_active');
+            });
+        });
+
+        document.getElementById('languageSelector').addEventListener('change', function(e) {
+            var language = e.target.value;
+            var model = editor.getModel();
+            monaco.editor.setModelLanguage(model, language);
+
+            var defaultCode = {
+                'python': 'def main():\n    # Ваш код здесь\n    n = int(input())\n    print(n * 2)\n\nif __name__ == "__main__":\n    main()',
+                'javascript': `const readline = require('readline');\n\nasync function main() {\n    const rl = readline.createInterface({\n        input: process.stdin,\n        output: process.stdout,\n        terminal: false\n    });\n    \n    const lines = [];\n    for await (const line of rl) {\n        lines.push(line);\n    }\n    \n    // Ваш код здесь\n    const n = parseInt(lines[0]);\n    console.log(n * 2);\n}\n\nif (require.main === module) {\n    main().catch(console.error);\n}`,
+                'cpp': '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Ваш код здесь\n    int n;\n    cin >> n;\n    cout << n * 2 << endl;\n    return 0;\n}',
+                'java': 'import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        // Ваш код здесь\n        int n = scanner.nextInt();\n        System.out.println(n * 2);\n        scanner.close();\n    }\n}'
+            };
+
+            editor.setValue(defaultCode[language] || '');
+        });
+
+        document.getElementById('runCode').addEventListener('click', runCode);
+        document.getElementById('submitSolution').addEventListener('click', submitSolution);
+        const findBtn = document.getElementById('findMatchBtn');
+        if (findBtn) {
+            findBtn.addEventListener('click', findMatch);
+        }
+        const surrenderBtn = document.getElementById('surrenderBtn');
+        if (surrenderBtn) {
+            surrenderBtn.addEventListener('click', async () => {
+                if (!confirm('Точно хотите сдаться? Матч будет завершён.')) return;
+                try {
+                    const resp = await fetch('/api/match/forfeit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok) {
+                        alert(data?.error || 'Не удалось сдаться');
+                        return;
+                    }
+                    showMatchResultModal(data, () => {
+                        window.location.href = '/profile';
+                    });
+                } catch (e) {
+                    console.error(e);
+                    alert('Ошибка сети при сдаче');
+                }
+            });
+        }
+
+        checkActiveMatch();
+        const attemptsContent = document.getElementById('attemptsContent');
+        if (attemptsContent && attemptsContent.classList.contains('problem_content_active')) {
+            loadAttemptsHistory();
+        }
+    });
+    </script>
+</body>
+</html>

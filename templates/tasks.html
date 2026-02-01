@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeDuel - Задачи</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro" rel="stylesheet">
+    <link rel="stylesheet" href="../static/tasks.css">
+</head>
+<body>
+    <header>
+        <div class="header_left">
+            <div class="header_icon"></div>
+            <div class="header_name">CodeDuel</div>
+        </div>
+        <div class="header_center">
+            {% if active_match_id %}
+                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
+                    У вас есть активный матч → перейти
+                </a>
+            {% endif %}
+        </div>
+        <div class="header_right">
+            <a href="{{ url_for('profile') }}" class="header_link">Профиль</a>
+            <a href="{{ url_for('main_reg') }}" class="header_link">Главная</a>
+            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
+            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h1 class="title">Задачи</h1>
+            <div class="search_task">
+                <div class="search">
+                    <input type="text" class="search_place" id="searchInput" placeholder="Поиск задачи...">
+                </div>
+                <div class="filters">
+                    <select class="filter_text" id="difficultyFilter">
+                        <option value="all">Все сложности</option>
+                        <option value="легкая">Легкая</option>
+                        <option value="средняя">Средняя</option>
+                        <option value="сложная">Сложная</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tasks_list" id="tasksList">
+                {% for task in tasks %}
+                <div class="task_item"
+                     data-id="{{ task.id }}"
+                     data-title="{{ task.title|lower }}"
+                     data-difficulty="{{ task.difficulty_level|lower }}">
+                    <div class="task_num">{{ task.id }}</div>
+                    <div class="task_info">
+                        <div class="task_name">{{ task.title }}</div>
+                        <div class="task_level">{{ task.difficulty_level }}</div>
+                    </div>
+                    <div class="task_actions">
+                        {% set st = best_status_by_task.get(task.id) %}
+                        <div class="status_badge {{ st if st else 'none' }}">{{ status_label.get(st, 'Не решена') }} </div>
+                        <a href="{{ url_for('task_detail', task_id=task.id) }}" class="btn_run">Выполнить</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer_left">
+            <div class="footer_icon"></div>
+            <div>Соревновательная платформа</div>
+        </div>
+        <div class="footer_right">
+            <div class="contact">Связаться с нами:</div>
+            <div class="contact">
+                <div class="icon_mail"></div>
+                <a href="mailto:info@codeduel.com" class="email">info@codeduel.com</a>
+            </div>
+            <div class="contact">
+                <div class="icon_phone"></div>
+                <div class="phone">+1 (123) 456 78 80</div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const difficultyFilter = document.getElementById('difficultyFilter');
+            const taskItems = document.querySelectorAll('.task_item');
+
+            // Функция фильтрации задач
+            function filterTasks() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                const selectedDifficulty = difficultyFilter.value;
+
+                let hasVisibleTasks = false;
+
+                taskItems.forEach(task => {
+                    const title = task.dataset.title;
+                    const difficulty = task.dataset.difficulty;
+                    let shouldShow = true;
+
+                    // Фильтр по поиску
+                    if (searchTerm && !title.includes(searchTerm)) {
+                        shouldShow = false;
+                    }
+
+                    // Фильтр по сложности (сравниваем в нижнем регистре)
+                    if (selectedDifficulty !== 'all' && difficulty !== selectedDifficulty) {
+                        shouldShow = false;
+                    }
+
+                    // Показываем/скрываем задачу
+                    task.style.display = shouldShow ? 'flex' : 'none';
+
+                    if (shouldShow) {
+                        hasVisibleTasks = true;
+                    }
+                });
+
+                // Если ничего не найдено
+                if (!hasVisibleTasks) {
+                    showNoResultsMessage();
+                } else {
+                    hideNoResultsMessage();
+                }
+            }
+
+            // Показать сообщение "Ничего не найдено"
+            function showNoResultsMessage() {
+                let noResults = document.getElementById('noResultsMessage');
+                if (!noResults) {
+                    noResults = document.createElement('div');
+                    noResults.id = 'noResultsMessage';
+                    noResults.className = 'no-results';
+                    noResults.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #b8b8b8;">
+                            <h3>Задачи не найдены</h3>
+                            <p>Попробуйте изменить поисковый запрос или фильтр сложности</p>
+                        </div>
+                    `;
+                    document.getElementById('tasksList').appendChild(noResults);
+                }
+                noResults.style.display = 'block';
+            }
+
+            // Скрыть сообщение "Ничего не найдено"
+            function hideNoResultsMessage() {
+                const noResults = document.getElementById('noResultsMessage');
+                if (noResults) {
+                    noResults.style.display = 'none';
+                }
+            }
+
+            // Сортировка задач по сложности
+            function sortTasksByDifficulty() {
+                const tasksList = document.getElementById('tasksList');
+                const visibleTasks = Array.from(taskItems)
+                    .filter(task => task.style.display !== 'none')
+                    .sort((a, b) => {
+                        // Порядок сортировки: легкая, средняя, сложная
+                        const difficultyOrder = {
+                            'легкая': 1,
+                            'средняя': 2,
+                            'сложная': 3
+                        };
+                        const difficultyA = difficultyOrder[a.dataset.difficulty] || 0;
+                        const difficultyB = difficultyOrder[b.dataset.difficulty] || 0;
+                        return difficultyA - difficultyB;
+                    });
+
+                // Перемещаем задачи в отсортированном порядке
+                visibleTasks.forEach(task => {
+                    tasksList.appendChild(task);
+                });
+            }
+
+            // Добавляем цветовое кодирование для сложности
+            function addDifficultyColors() {
+                taskItems.forEach(task => {
+                    const difficultyElement = task.querySelector('.task_level');
+                    const difficulty = task.dataset.difficulty;
+
+                    // Устанавливаем цвет в зависимости от сложности
+                    if (difficulty === 'легкая') {
+                        difficultyElement.style.color = '#10B981'; // Зеленый
+                    } else if (difficulty === 'средняя') {
+                        difficultyElement.style.color = '#F59E0B'; // Оранжевый/желтый
+                    } else if (difficulty === 'сложная') {
+                        difficultyElement.style.color = '#EF4444'; // Красный
+                    }
+                });
+            }
+
+            // Обработчики событий
+            searchInput.addEventListener('input', function() {
+                filterTasks();
+                sortTasksByDifficulty();
+            });
+
+            difficultyFilter.addEventListener('change', function() {
+                filterTasks();
+                sortTasksByDifficulty();
+            });
+
+            // Добавляем CSS для сообщения "Ничего не найдено"
+            const style = document.createElement('style');
+            style.textContent = `
+                .no-results {
+                    display: none;
+                    border-top: 1px solid #454545;
+                }
+
+                .no-results h3 {
+                    color: #fff;
+                    margin-bottom: 10px;
+                    font-size: 18px;
+                }
+
+                .no-results p {
+                    color: #b8b8b8;
+                    font-size: 14px;
+                }
+
+                .search_place:focus {
+                    color: #fff;
+                }
+            `;
+            document.head.appendChild(style);
+
+            // Инициализация
+            addDifficultyColors();
+            filterTasks();
+            sortTasksByDifficulty();
+        });
+    </script>
+</body>
+</html>

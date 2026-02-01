@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - CodeDuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/reg.css">
+</head>
+<body>
+    <div class="login_container">
+        <div class="login_card">
+            <h1 class="login_title">Регистрация</h1>
+            <form class="login_form" method="POST" action="{{ url_for('register') }}">
+                {{ form.hidden_tag() }}
+                {{ form.username(class_="form_input", placeholder="Имя пользователя") }}
+                {{ form.email(class_="form_input", placeholder="Email") }}
+                {{ form.password(class_="form_input", placeholder="Пароль") }}
+                {{ form.confirm_password(class_="form_input", placeholder="Подтверждение пароля") }}
+                {{ form.submit(class_="login_btn") }}
+            </form>
+            <div class="register_section">
+                <a href="{{ url_for('login') }}" class="register_btn">Войти</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
