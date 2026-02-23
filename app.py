@@ -1,11 +1,7 @@
 from flask import Flask, render_template, url_for, redirect, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import InputRequired, Length, ValidationError, Email, EqualTo
+from flask_login import login_user, LoginManager, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
-from sqlalchemy import desc, or_, func
+from sqlalchemy import desc, or_, func, text
 from datetime import datetime, timezone, timedelta
 from executor import run_code
 import os
@@ -14,37 +10,12 @@ import math
 import threading
 import traceback
 
-def to_utc_aware(dt):
-    if dt is None:
-        return None
-    if getattr(dt, 'tzinfo', None) is not None:
-        return dt
-    return dt.replace(tzinfo=timezone.utc)
-
-
-def normalize_match_started_at(match, now_utc=None):
-    if now_utc is None:
-        now_utc = datetime.now(timezone.utc)
-
-    if not getattr(match, 'started_at', None):
-        match.started_at = to_utc_aware(getattr(match, 'created_at', None)) or now_utc
-        return match.started_at
-
-    started_at = to_utc_aware(match.started_at)
-    if started_at > (now_utc + timedelta(seconds=60)):
-        fallback = to_utc_aware(getattr(match, 'created_at', None)) or now_utc
-        started_at = min(started_at, fallback)
-
-    if started_at != match.started_at:
-        match.started_at = started_at
-
-    return started_at
-
+from extensions import db
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:54321@localhost:5432/code_duel'
-app.config['SECRET_KEY'] = "ea895771cd548603ffeb0f919568488deede3e855285883bb5c55c6b484c13cc"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or os.environ.get('SQLALCHEMY_DATABASE_URI') or 'postgresql://postgres:54321@localhost:5432/code_duel'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.environ.get('FLASK_SECRET_KEY') or 'dev-secret-change-in-production'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['CODE_EXECUTION_TIMEOUT'] = 5
@@ -52,30 +23,27 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_recycle': 300,
     'pool_pre_ping': True,
 }
-db = SQLAlchemy(app)
+db.init_app(app)
+
+from models import User, Task, TestCase, Attempt, Match, MatchResult, MatchmakingQueue
+from forms import RegisterForm, LoginForm
+from services.match_service import (
+    to_utc_aware,
+    normalize_match_started_at,
+    _apply_match_result,
+    _build_match_response_for_user,
+    get_active_match_for_user,
+    get_task_max_score,
+    finalize_match_if_needed,
+    DUEL_MAX_TIME as duel_max_time,
+)
+from services.matchmaking_service import MatchmakingSystem
 bcrypt = Bcrypt(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
-
-class User(db.Model, UserMixin):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
-    email = db.Column(db.String(70), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    elo = db.Column(db.Integer, default=1000)
-    wins = db.Column(db.Integer, default=0)
-    losses = db.Column(db.Integer, default=0)
-    draws = db.Column(db.Integer, default=0)
-    best_elo = db.Column(db.Integer, default=1000)
-    games_played = db.Column(db.Integer, default=0)
-    title = db.Column(db.String(50), nullable=False, default="Новичок")
-    is_online = db.Column(db.Boolean, default=False)
-    last_seen = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -91,597 +59,60 @@ def inject_active_match_to_templates():
                 'active_match': m,
                 'active_match_id': (m.id if m else None),
             }
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.warning("inject_active_match failed: %s", e)
     return {'active_match': None, 'active_match_id': None}
 
 
-class TestCase(db.Model):
-    __tablename__ = 'test_cases'
-    id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
-    input_data = db.Column(db.Text, nullable=False)
-    expected_output = db.Column(db.Text, nullable=False)
-    is_hidden = db.Column(db.Boolean, default=False)
-    points = db.Column(db.Integer, default=10)
-
-
-class Task(db.Model):
-    __tablename__ = 'tasks'
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(50), nullable=False, unique=True)
-    description = db.Column(db.Text)
-    input_description = db.Column(db.Text)
-    output_description = db.Column(db.Text)
-    difficulty_level = db.Column(db.Integer)
-    difficulty = db.Column(db.String(20), default='medium')  # easy, medium, hard
-    points = db.Column(db.Integer, default=20)
-    time_limit = db.Column(db.Integer, default=2)
-    memory_limit = db.Column(db.Integer, default=256)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    example = db.Column(db.Text)
-    answer = db.Column(db.Text)
-    test_cases = db.relationship('TestCase', backref='task', lazy=True, cascade='all, delete-orphan')
-
-
-class Attempt(db.Model):
-    __tablename__ = 'attempts'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
-    code = db.Column(db.Text, nullable=False)
-    language = db.Column(db.String(20), nullable=False)
-    status = db.Column(db.String(50), nullable=False)
-    execution_time = db.Column(db.Float)
-    memory_used = db.Column(db.Integer)
-    tests_passed = db.Column(db.Integer)
-    total_tests = db.Column(db.Integer)
-    score = db.Column(db.Integer)
-    error_message = db.Column(db.Text)
-    submitted_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-
-    user = db.relationship('User', backref='attempts')
-    task = db.relationship('Task', backref='attempts')
-
-
-class Match(db.Model):
-    __tablename__ = 'matches'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    opponent_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
-    result = db.Column(db.String(10))
-    user_rating_change = db.Column(db.Integer, default=0)
-    opponent_rating_change = db.Column(db.Integer, default=0)
-    match_duration = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    started_at = db.Column(db.DateTime)
-    ended_at = db.Column(db.DateTime)
-
-    user = db.relationship('User', foreign_keys=[user_id], backref='matches_as_user')
-    opponent = db.relationship('User', foreign_keys=[opponent_id], backref='matches_as_opponent')
-    task = db.relationship('Task', backref='matches')
-
-
-class MatchResult(db.Model):
-    __tablename__ = 'match_results'
-    id = db.Column(db.Integer, primary_key=True)
-    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    attempt_id = db.Column(db.Integer, db.ForeignKey('attempts.id'), nullable=False)
-    score = db.Column(db.Integer, default=0)
-    tests_passed = db.Column(db.Integer, default=0)
-    total_tests = db.Column(db.Integer, default=0)
-    execution_time = db.Column(db.Float)
-    submitted_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-
-    match = db.relationship('Match', backref='detailed_results')
-    user = db.relationship('User', backref='match_results')
-    attempt = db.relationship('Attempt', backref='match_result')
-
-
-class MatchmakingQueue(db.Model):
-    __tablename__ = 'matchmaking_queue'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    elo = db.Column(db.Integer, nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=True)
-    difficulty = db.Column(db.String(20))  # easy, medium, hard
-    joined_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    last_ping = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    status = db.Column(db.String(20), default='searching')  # searching, matched, cancelled
-
-    user = db.relationship('User', backref='matchmaking_entries')
-    task = db.relationship('Task', backref='matchmaking_entries')
-
-
-class RegisterForm(FlaskForm):
-    username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
-    email = StringField(validators=[InputRequired(), Email(), Length(max=70)])
-    password = PasswordField(validators=[InputRequired(), Length(min=6, max=30)])
-    confirm_password = PasswordField(validators=[InputRequired(), EqualTo('password', message='Пароли не совпадают')])
-    submit = SubmitField("Зарегистрироваться")
-
-    def validate_username(self, username):
-        existing_user_username = User.query.filter_by(username=username.data).first()
-        if existing_user_username:
-            raise ValidationError("Это имя пользователя уже занято. Пожалуйста, выберите другое.")
-
-
-class LoginForm(FlaskForm):
-    email = StringField(validators=[InputRequired(), Email(), Length(max=70)])
-    password = PasswordField(validators=[InputRequired(), Length(min=6, max=30)])
-    submit = SubmitField('Войти')
-
-duel_max_time = 7200
-
-
-def _apply_match_result(match: Match, result: str):
-    if match is None or match.result is not None:
-        return
-
-    if result not in {'win', 'loss', 'draw'}:
-        raise ValueError('Invalid match result')
-
-    now_utc = datetime.now(timezone.utc)
-
-    started_at = normalize_match_started_at(match, now_utc=now_utc)
-
-    user = db.session.get(User, match.user_id)
-    opp = db.session.get(User, match.opponent_id)
-    if not user or not opp:
-        raise RuntimeError('Users not found for match')
-
-    match.result = result
-
-    if result == 'win':
-        new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 1)
-        user.wins += 1
-        opp.losses += 1
-    elif result == 'loss':
-        new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 0)
-        user.losses += 1
-        opp.wins += 1
-    else:  # draw
-        new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 0.5)
-        user.draws += 1
-        opp.draws += 1
-
-    match.user_rating_change = new_user_elo - user.elo
-    match.opponent_rating_change = new_opp_elo - opp.elo
-    user.elo = new_user_elo
-    opp.elo = new_opp_elo
-
-    user.games_played += 1
-    opp.games_played += 1
-
-    match.ended_at = now_utc
-    ended_at = to_utc_aware(match.ended_at)
-    started_at = normalize_match_started_at(match, now_utc=ended_at)
-    duration = int((ended_at - started_at).total_seconds()) if started_at and ended_at else 0
-    match.match_duration = max(0, duration)
-
-    if user.elo > user.best_elo:
-        user.best_elo = user.elo
-    if opp.elo > opp.best_elo:
-        opp.best_elo = opp.elo
-
-    db.session.commit()
-
-
-def get_active_match_for_user(user_id: int):
-    match = (Match.query.filter(
-        or_(Match.user_id == user_id, Match.opponent_id == user_id),
-        Match.result == None
-    ).order_by(Match.created_at.desc()).first())
-
-    if not match:
-        return None
-
-    if not match.started_at:
-        match.started_at = to_utc_aware(match.created_at) or datetime.now(timezone.utc)
-        db.session.commit()
-
-    finalize_match_if_needed(match)
-    db.session.refresh(match)
-
-    return match if match.result is None else None
-
-def get_task_max_score(task_id: int) -> int:
-    task = db.session.get(Task, int(task_id))
-    return int(task.points or 0) if task else 0
-
-def finalize_match_if_needed(match: Match):
-    if match is None or match.result is not None:
-        return
-    now_utc = datetime.now(timezone.utc)
-    started_at = normalize_match_started_at(match, now_utc=now_utc)
-    db.session.commit()
-
-    task_max = get_task_max_score(match.task_id)
-
-    r1 = MatchResult.query.filter_by(match_id=match.id, user_id=match.user_id).first()
-    r2 = MatchResult.query.filter_by(match_id=match.id, user_id=match.opponent_id).first()
-
-    s1 = (r1.score if r1 else 0) or 0
-    s2 = (r2.score if r2 else 0) or 0
-
-    tp1 = (r1.tests_passed if r1 else 0) or 0
-    tp2 = (r2.tests_passed if r2 else 0) or 0
-
-    t1 = (r1.execution_time if r1 and r1.execution_time is not None else 10**9)
-    t2 = (r2.execution_time if r2 and r2.execution_time is not None else 10**9)
-
-    user = db.session.get(User, match.user_id)
-    opp = db.session.get(User, match.opponent_id)
-
-    full1 = bool(r1 and (r1.total_tests or 0) > 0 and (r1.tests_passed or 0) == (r1.total_tests or 0))
-    full2 = bool(r2 and (r2.total_tests or 0) > 0 and (r2.tests_passed or 0) == (r2.total_tests or 0))
-
-    if full1 or full2:
-        if full1 and not full2:
-            match.result = 'win'
-        elif full2 and not full1:
-            match.result = 'loss'
-        else:
-            if t1 < t2:
-                match.result = 'win'
-            elif t2 < t1:
-                match.result = 'loss'
-            else:
-                match.result = 'draw'
-
-    if match.result is None:
-        started_at = normalize_match_started_at(match, now_utc=now_utc)
-        elapsed = int((now_utc - started_at).total_seconds()) if started_at else 0
-        if elapsed >= duel_max_time:
-            if tp1 > tp2:
-                match.result = 'win'
-            elif tp2 > tp1:
-                match.result = 'loss'
-            else:
-                if s1 > s2:
-                    match.result = 'win'
-                elif s2 > s1:
-                    match.result = 'loss'
-                else:
-                    if t1 < t2:
-                        match.result = 'win'
-                    elif t2 < t1:
-                        match.result = 'loss'
-                    else:
-                        match.result = 'draw'
-
-    if match.result is None:
-        return
-
-    if match.result == 'win':
-        new_user_elo, _new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 1)
-        user.wins += 1
-        opp.losses += 1
-    elif match.result == 'loss':
-        new_user_elo, _new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 0)
-        user.losses += 1
-        opp.wins += 1
-    else:  # draw
-        new_user_elo, _new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 0.5)
-        user.draws += 1
-        opp.draws += 1
-
-    match.user_rating_change = new_user_elo - user.elo
-    match.opponent_rating_change = 0
-
-    user.elo = new_user_elo
-
-    user.games_played += 1
-    opp.games_played += 1
-
-    match.ended_at = now_utc
-    ended_at = to_utc_aware(match.ended_at)
-    started_at = normalize_match_started_at(match, now_utc=ended_at)
-    duration = int((ended_at - started_at).total_seconds()) if started_at and ended_at else 0
-    match.match_duration = max(0, duration)
-
-    if user.elo > user.best_elo:
-        user.best_elo = user.elo
-
-    db.session.commit()
-
-class MatchmakingSystem:
-    def __init__(self):
-        self.search_lock = threading.Lock()
-        self.ELO_RANGE = 300
-        self.MAX_SEARCH_TIME = 300
-
-    def find_opponent(self, user_id, user_elo, difficulty=None):
-        with self.search_lock:
-            try:
-                print(f"Поиск противника для пользователя {user_id} (ELO: {user_elo})")
-                self._cleanup_old_entries()
-
-                online_cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
-                online_filter = or_(User.is_online == True, User.last_seen >= online_cutoff)
-
-
-                if difficulty and difficulty != 'any':
-                    opponent = MatchmakingQueue.query.filter(
-                        MatchmakingQueue.user_id != user_id,
-                        MatchmakingQueue.status == 'searching',
-                        MatchmakingQueue.difficulty == difficulty,
-                        MatchmakingQueue.elo.between(user_elo - self.ELO_RANGE, user_elo + self.ELO_RANGE),
-                        online_filter
-                    ).join(User, MatchmakingQueue.user_id == User.id).order_by(
-                        db.func.abs(MatchmakingQueue.elo - user_elo),
-                        MatchmakingQueue.joined_at
-                    ).first()
-
-                    if opponent:
-                        print(f"Найден оппонент {opponent.user_id} для пользователя {user_id} (difficulty={difficulty})")
-                        return self._create_match(user_id, opponent.user_id, difficulty)
-
-                opponent = MatchmakingQueue.query.filter(
-                    MatchmakingQueue.user_id != user_id,
-                    MatchmakingQueue.status == 'searching',
-                    MatchmakingQueue.elo.between(user_elo - self.ELO_RANGE, user_elo + self.ELO_RANGE),
-                    online_filter
-                ).join(User, MatchmakingQueue.user_id == User.id).order_by(
-                    db.func.abs(MatchmakingQueue.elo - user_elo),
-                    MatchmakingQueue.joined_at
-                ).first()
-
-                if opponent:
-                    print(f"Найден оппонент {opponent.user_id} для пользователя {user_id} (difficulty={difficulty})")
-                    return self._create_match(user_id, opponent.user_id, difficulty)
-
-                opponent = MatchmakingQueue.query.filter(
-                    MatchmakingQueue.user_id != user_id,
-                    MatchmakingQueue.status == 'searching',
-                    online_filter
-                ).join(User, MatchmakingQueue.user_id == User.id).order_by(
-                    MatchmakingQueue.joined_at
-                ).first()
-
-                if opponent:
-                    print(f"Найден оппонент {opponent.user_id} для пользователя {user_id} (difficulty={difficulty})")
-                    return self._create_match(user_id, opponent.user_id, difficulty)
-                return self._add_to_queue(user_id, user_elo, difficulty)
-
-            except Exception as e:
-                db.session.rollback()
-                print(f"Ошибка при поиске противника: {e}")
-                raise e
-
-    def _get_random_task_by_difficulty(self, difficulty):
-        try:
-            if difficulty == 'any' or not difficulty:
-                task = Task.query.order_by(db.func.random()).first()
-            else:
-                task = Task.query.filter_by(difficulty=difficulty).order_by(db.func.random()).first()
-
-            return task.id if task else None
-        except Exception as e:
-            print(f"Ошибка при выборе случайной задачи: {e}")
-            return None
-
-    def _create_match(self, user1_id, user2_id, difficulty):
-        try:
-            task_id = self._get_random_task_by_difficulty(difficulty)
-            if not task_id:
-                task_id = self._get_random_task_by_difficulty('any')
-            if not task_id:
-                raise Exception("No tasks in database")
-
-            task = db.session.get(Task, task_id)
-            if user1_id < user2_id:
-                db_user_id, db_opponent_id = user1_id, user2_id
-            else:
-                db_user_id, db_opponent_id = user2_id, user1_id
-
-            MatchmakingQueue.query.filter(
-                MatchmakingQueue.user_id.in_([user1_id, user2_id]),
-                MatchmakingQueue.status == 'searching'
-            ).update({'status': 'matched'})
-
-            # Создаем матч
-            match = Match(
-                user_id=db_user_id,
-                opponent_id=db_opponent_id,
-                task_id=task_id,
-                created_at=datetime.now(timezone.utc),
-                started_at=datetime.now(timezone.utc),
-                result=None
-            )
-
-            db.session.add(match)
-            db.session.commit()
-
-            print(f"Матч создан id={match.id}, task_id={task_id}, users=({db_user_id},{db_opponent_id})")
-
-            opponent_user = db.session.get(User, user2_id)
-
-            return {
-                'success': True,
-                'match_found': True,
-                'match_id': match.id,
-                'opponent_id': opponent_user.id,
-                'opponent': {
-                    'id': opponent_user.id,
-                    'username': opponent_user.username,
-                    'elo': opponent_user.elo
-                },
-                'task_id': task_id,
-                'task_title': task.title if task else 'Unknown Task',
-                'difficulty': difficulty,
-                'message': 'Соперник найден!'
-            }
-
-        except Exception as e:
-            db.session.rollback()
-            raise e
-
-    def _add_to_queue(self, user_id, user_elo, difficulty):
-        try:
-            # Проверяем, не в очереди ли уже пользователь
-            existing = MatchmakingQueue.query.filter_by(
-                user_id=user_id,
-                status='searching'
-            ).first()
-
-            if existing:
-                existing.last_ping = datetime.now(timezone.utc)
-                db.session.commit()
-
-                return {
-                    'success': True,
-                    'in_queue': True,
-                    'queue_id': existing.id,
-                    'message': 'Вы уже в очереди поиска'
-                }
-
-            # Добавляем в очередь
-            queue_entry = MatchmakingQueue(
-                user_id=user_id,
-                elo=user_elo,
-                task_id=None,
-                difficulty=difficulty,
-                status='searching',
-                joined_at=datetime.now(timezone.utc),
-                last_ping=datetime.now(timezone.utc)
-            )
-
-            db.session.add(queue_entry)
-            db.session.commit()
-
-            print(f"Пользователь {user_id} добавлен в очередь поиска")
-
-            return {
-                'success': True,
-                'in_queue': True,
-                'queue_id': queue_entry.id,
-                'message': 'Ожидание соперника...'
-            }
-
-        except Exception as e:
-            db.session.rollback()
-            raise e
-
-    def _cleanup_old_entries(self):
-        stale_before = datetime.now(timezone.utc) - timedelta(seconds=self.MAX_SEARCH_TIME)
-        MatchmakingQueue.query.filter(
-            MatchmakingQueue.last_ping < stale_before,
-            MatchmakingQueue.status == 'searching'
-        ).delete()
-
-        db.session.commit()
-
-    def cancel_search(self, user_id):
-        with self.search_lock:
-            deleted = MatchmakingQueue.query.filter_by(
-                user_id=user_id,
-                status='searching'
-            ).delete()
-            return deleted > 0
-
-    def ping_queue(self, user_id):
-        try:
-            updated = MatchmakingQueue.query.filter_by(
-                user_id=user_id,
-                status='searching'
-            ).update({'last_ping': datetime.now(timezone.utc)})
-
-            db.session.commit()
-            return updated > 0
-
-        except Exception as e:
-            db.session.rollback()
-            return False
-
-    def get_queue_stats(self, user_id):
-        try:
-            five_minutes_ago = datetime.now(timezone.utc) - timedelta(minutes=5)
-
-            total_in_queue = MatchmakingQueue.query.filter_by(
-                status='searching'
-            ).join(User, MatchmakingQueue.user_id == User.id).filter(
-                or_(User.is_online == True, User.last_seen >= five_minutes_ago)
-            ).count()
-
-            return {'total_players': total_in_queue}
-
-        except Exception as e:
-            print(f"Ошибка при получении статистики: {e}")
-            return {'total_players': 0}
-
-    def _estimate_wait_time(self, total_players, similar_players):
-        if similar_players > 0:
-            return max(5, 60 // (similar_players + 1))
-        elif total_players > 0:
-            return max(10, 120 // (total_players + 1))
-        else:
-            return 30
-
 matchmaking_system = MatchmakingSystem()
 
+
 def normalize_output(output):
+    """Normalize code output for comparison (strip, unify line endings)."""
     if output is None:
         return ""
     return output.strip().replace('\r\n', '\n')
 
 
 def validate_solution(task_id, code, language):
+    """Run code against all test cases and return validation result."""
     task = db.session.get(Task, int(task_id))
     if not task:
         return {'error': 'Task not found'}
-
     test_cases = TestCase.query.filter_by(task_id=task_id).order_by(TestCase.id).all()
     if not test_cases:
         return {'error': 'No test cases found for this task'}
-
     results = []
     tests_passed = 0
     total_execution_time = 0.0
     max_memory_used = 0
-
     for test_case in test_cases:
-        result = run_code(
-            code,
-            test_case.input_data,
-            task.time_limit,
-            language
-        )
-
+        result = run_code(code, test_case.input_data, task.time_limit, language)
         exec_time = float(result.get('time') or 0)
         mem_used = int(result.get('memory') or 0)
-
         total_execution_time += exec_time
         max_memory_used = max(max_memory_used, mem_used)
-
         test_result = {
             'test_id': test_case.id,
             'status': result.get('status', 'system_error'),
             'passed': False,
             'execution_time': exec_time,
             'memory_used': mem_used,
-            'error': (result.get('error') or '')[:200]
+            'error': (result.get('error') or '')[:200],
         }
-
         if result.get('success'):
             normalized_output = normalize_output(result.get('output', ''))
             normalized_expected = normalize_output(test_case.expected_output)
-
             if normalized_output == normalized_expected:
                 test_result['passed'] = True
                 test_result['status'] = 'passed'
                 tests_passed += 1
             else:
                 test_result['status'] = 'wrong_answer'
-
         results.append(test_result)
-
     total_tests = len(test_cases)
     pass_ratio = (tests_passed / total_tests) if total_tests else 0.0
     avg_execution_time = (total_execution_time / total_tests) if total_tests else 0.0
-
     if tests_passed == total_tests:
         overall_status = 'accepted'
     elif tests_passed > 0:
@@ -694,7 +125,6 @@ def validate_solution(task_id, code, language):
         overall_status = 'runtime_error'
     else:
         overall_status = 'wrong_answer'
-
     return {
         'status': overall_status,
         'tests_passed': tests_passed,
@@ -702,10 +132,12 @@ def validate_solution(task_id, code, language):
         'pass_ratio': pass_ratio,
         'execution_time': avg_execution_time,
         'memory_used': max_memory_used,
-        'results': results
+        'results': results,
     }
 
+
 def get_status_message(status):
+    """Return human-readable message for solution status."""
     messages = {
         'accepted': 'Решение принято!',
         'partially_correct': 'Частично верно',
@@ -713,22 +145,10 @@ def get_status_message(status):
         'time_limit': 'Превышено ограничение по времени',
         'runtime_error': 'Ошибка выполнения',
         'compilation_error': 'Ошибка компиляции',
-        'testing': 'Решение проверяется...'
+        'testing': 'Решение проверяется...',
     }
     return messages.get(status, 'Неизвестный статус')
 
-
-def calculate_elo_rating(rating1, rating2, result1):
-    K = 32  # Коэффициент изменения рейтинга
-
-    expected1 = 1 / (1 + 10 ** ((rating2 - rating1) / 400))
-    expected2 = 1 / (1 + 10 ** ((rating1 - rating2) / 400))
-
-    # Новые рейтинги
-    new_rating1 = rating1 + K * (result1 - expected1)
-    new_rating2 = rating2 + K * ((1 - result1) - expected2)
-
-    return round(new_rating1), round(new_rating2)
 
 @app.route('/')
 def main():
@@ -921,12 +341,13 @@ def main_reg():
     return redirect(url_for('main_page'))
 
 
-@app.route('/liderboard')
-def liderboard():
+@app.route('/leaderboard')
+def leaderboard():
+    """Leaderboard page (top 50 by ELO)."""
     leaders = User.query.order_by(desc(User.elo)).limit(50).all()
     for rank, user in enumerate(leaders, 1):
         user.rank = rank
-    return render_template('liderboard.html', leaders=leaders, current_user=current_user)
+    return render_template('leaderboard.html', leaders=leaders, current_user=current_user)
 
 
 @app.route('/api/leaderboard')
@@ -947,6 +368,8 @@ def api_leaderboard():
 @app.route('/update_elo/<int:user_id>/<int:new_elo>')
 @login_required
 def update_elo(user_id, new_elo):
+    if current_user.id != user_id:
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
     user = db.session.get(User, user_id)
     if user:
         user.elo = new_elo
@@ -993,6 +416,10 @@ def get_task_attempts(task_id):
 @app.route('/api/solutions/submit', methods=['POST'])
 @login_required
 def submit_solution():
+    """
+    Submit code solution for solo or duel mode.
+    Creates attempt, runs validation, calculates score, and optionally updates match result.
+    """
     try:
         data = request.get_json() or {}
 
@@ -1008,7 +435,6 @@ def submit_solution():
         if not task:
             return jsonify({'error': 'Task not found'}), 404
 
-        # ===== Дуэль: проверки доступа =====
         match = None
         if match_id:
             match = db.session.get(Match, int(match_id))
@@ -1025,7 +451,7 @@ def submit_solution():
                 match.started_at = datetime.now(timezone.utc)
                 db.session.commit()
 
-        # ===== 1) создаём Attempt (черновик) =====
+        # Create attempt (draft)
         attempt = Attempt(
             user_id=current_user.id,
             task_id=task.id,
@@ -1040,22 +466,18 @@ def submit_solution():
         db.session.add(attempt)
         db.session.commit()
 
-        # ===== 2) прогоняем тесты =====
         validation = validate_solution(task.id, code, language)
 
         tests_passed = int(validation.get('tests_passed') or 0)
         total_tests = int(validation.get('total_tests') or 0)
         avg_execution_time = float(validation.get('execution_time') or 0.0)
 
-        # ===== 3) first_try: это первая попытка по задаче =====
-        # attempt уже создан, поэтому <= 1 означает "первая"
+        # First try: attempt already created, so count <= 1 means first attempt
         attempts_count = Attempt.query.filter_by(
             user_id=current_user.id,
             task_id=task.id
         ).count()
         is_first_try = (attempts_count <= 1)
-
-        # ===== 4) считаем очки (твоя схема: base + бонусы, округление вверх) =====
         score_info = calculate_task_score(
             task_points=int(task.points or 0),
             tests_passed=tests_passed,
@@ -1071,16 +493,9 @@ def submit_solution():
         attempt.total_tests = total_tests
         attempt.execution_time = avg_execution_time
         attempt.score = int(score_info.get("total") or 0)
+        attempt.error_message = _extract_first_error_from_validation(validation)[:1000]
 
-        # первая ошибка
-        first_error = ""
-        for r in (validation.get("results") or []):
-            if r.get("error"):
-                first_error = r["error"]
-                break
-        attempt.error_message = (first_error or "")[:1000]
-
-        # ===== одиночный режим =====
+        # Solo mode
         if not match_id:
             db.session.commit()
             return jsonify({
@@ -1094,35 +509,8 @@ def submit_solution():
                 'message': get_status_message(attempt.status)
             })
 
-        # ===== дуэль: сохраняем MatchResult =====
-        match_result = MatchResult.query.filter_by(
-            match_id=match.id,
-            user_id=current_user.id
-        ).first()
-
-        if match_result:
-            match_result.attempt_id = attempt.id
-            match_result.score = attempt.score or 0
-            match_result.tests_passed = attempt.tests_passed or 0
-            match_result.total_tests = attempt.total_tests or 0
-            match_result.execution_time = attempt.execution_time
-            match_result.submitted_at = datetime.now(timezone.utc)
-        else:
-            match_result = MatchResult(
-                match_id=match.id,
-                user_id=current_user.id,
-                attempt_id=attempt.id,
-                score=attempt.score or 0,
-                tests_passed=attempt.tests_passed or 0,
-                total_tests=attempt.total_tests or 0,
-                execution_time=attempt.execution_time,
-                submitted_at=datetime.now(timezone.utc)
-            )
-            db.session.add(match_result)
-
+        _upsert_match_result_for_submission(match, current_user.id, attempt)
         db.session.commit()
-
-        # финализируем матч (ты уже делаешь)
         finalize_match_if_needed(match)
 
         return jsonify({
@@ -1219,7 +607,7 @@ def get_sample_test(task_id):
 def health_check():
     try:
         try:
-            db.session.execute("SELECT 1")
+            db.session.execute(text("SELECT 1"))
             db_status = 'connected'
         except Exception:
             db_status = 'disconnected'
@@ -1449,74 +837,13 @@ def get_match_status(match_id):
         db.session.refresh(match)
         user_result = MatchResult.query.filter_by(match_id=match_id, user_id=match.user_id).first()
         opponent_result = MatchResult.query.filter_by(match_id=match_id, user_id=match.opponent_id).first()
-
         user_info = db.session.get(User, match.user_id)
         opponent_info = db.session.get(User, match.opponent_id)
 
-        # Результат матча в БД хранится относительно match.user_id (s1):
-        #   win  -> победил match.user_id
-        #   lose -> победил match.opponent_id
-        #   draw -> ничья
-        # Для UI удобнее сразу отдать "результат для текущего пользователя".
-        is_user_side = (current_user.id == match.user_id)
-
-        result_for_user = match.result
-        if match.result in ['win', 'loss'] and not is_user_side:
-            result_for_user = 'win' if match.result == 'loss' else 'loss'
-
-        rating_change_for_user = match.user_rating_change if is_user_side else match.opponent_rating_change
-        rating_change_for_opponent = match.opponent_rating_change if is_user_side else match.user_rating_change
-
-        # Баллы и тесты тоже отдаём относительно текущего пользователя (чтобы сразу показать всплывашку)
-        user_score_for_user = user_result.score if user_result else 0
-        opp_score_for_user = opponent_result.score if opponent_result else 0
-        user_tests_passed_for_user = user_result.tests_passed if user_result else 0
-        user_total_tests_for_user = user_result.total_tests if user_result else 0
-        opp_tests_passed_for_user = opponent_result.tests_passed if opponent_result else 0
-        opp_total_tests_for_user = opponent_result.total_tests if opponent_result else 0
-        if not is_user_side:
-            user_score_for_user, opp_score_for_user = opp_score_for_user, user_score_for_user
-            user_tests_passed_for_user, opp_tests_passed_for_user = opp_tests_passed_for_user, user_tests_passed_for_user
-            user_total_tests_for_user, opp_total_tests_for_user = opp_total_tests_for_user, user_total_tests_for_user
-
-        response_data = {
-            'match_id': match.id,
-            'result': match.result,
-            'result_for_user': result_for_user,
-            'task_id': match.task_id,
-            'created_at': match.created_at.isoformat() if match.created_at else None,
-            'user_rating_change': match.user_rating_change,
-            'opponent_rating_change': match.opponent_rating_change,
-            'rating_change_for_user': rating_change_for_user,
-            'rating_change_for_opponent': rating_change_for_opponent,
-            'score_for_user': user_score_for_user,
-            'score_for_opponent': opp_score_for_user,
-            'tests_passed_for_user': user_tests_passed_for_user,
-            'total_tests_for_user': user_total_tests_for_user,
-            'tests_passed_for_opponent': opp_tests_passed_for_user,
-            'total_tests_for_opponent': opp_total_tests_for_user,
-            'participants': {
-                'user': {
-                    'id': user_info.id,
-                    'username': user_info.username,
-                    'elo': user_info.elo,
-                    'has_submitted': user_result is not None,
-                    'score': user_result.score if user_result else 0,
-                    'tests_passed': user_result.tests_passed if user_result else 0,
-                    'total_tests': user_result.total_tests if user_result else 0,
-                },
-                'opponent': {
-                    'id': opponent_info.id,
-                    'username': opponent_info.username,
-                    'elo': opponent_info.elo,
-                    'has_submitted': opponent_result is not None,
-                    'score': opponent_result.score if opponent_result else 0,
-                    'tests_passed': opponent_result.tests_passed if opponent_result else 0,
-                    'total_tests': opponent_result.total_tests if opponent_result else 0,
-                }
-            }
-        }
-
+        response_data = _build_match_response_for_user(
+            match, user_result, opponent_result, current_user.id,
+            user_info, opponent_info, include_participants=True
+        )
         return jsonify(response_data)
 
     except Exception as e:
@@ -1672,48 +999,19 @@ def forfeit_active_match():
 
         _apply_match_result(match, db_result)
 
-        # Вернём данные как в /api/match/<id>/status, чтобы фронт мог показать всплывашку.
         db.session.refresh(match)
-
         user_result = MatchResult.query.filter_by(match_id=match.id, user_id=match.user_id).first()
         opponent_result = MatchResult.query.filter_by(match_id=match.id, user_id=match.opponent_id).first()
+        user_info = db.session.get(User, match.user_id)
+        opponent_info = db.session.get(User, match.opponent_id)
 
-        is_user_side = (current_user.id == match.user_id)
-
-        result_for_user = match.result
-        if match.result in ['win', 'loss'] and not is_user_side:
-            result_for_user = 'win' if match.result == 'loss' else 'loss'
-
-        rating_change_for_user = match.user_rating_change if is_user_side else match.opponent_rating_change
-        # В UI больше не показываем изменение рейтинга соперника
-        rating_change_for_opponent = 0
-
-        user_score_for_user = user_result.score if user_result else 0
-        opp_score_for_user = opponent_result.score if opponent_result else 0
-        user_tests_passed_for_user = user_result.tests_passed if user_result else 0
-        user_total_tests_for_user = user_result.total_tests if user_result else 0
-        opp_tests_passed_for_user = opponent_result.tests_passed if opponent_result else 0
-        opp_total_tests_for_user = opponent_result.total_tests if opponent_result else 0
-        if not is_user_side:
-            user_score_for_user, opp_score_for_user = opp_score_for_user, user_score_for_user
-            user_tests_passed_for_user, opp_tests_passed_for_user = opp_tests_passed_for_user, user_tests_passed_for_user
-            user_total_tests_for_user, opp_total_tests_for_user = opp_total_tests_for_user, user_total_tests_for_user
-
-        return jsonify({
-            'ok': True,
-            'match_id': match.id,
-            'result': match.result,
-            'result_for_user': result_for_user,
-            'task_id': match.task_id,
-            'rating_change_for_user': rating_change_for_user,
-            'rating_change_for_opponent': rating_change_for_opponent,
-            'score_for_user': user_score_for_user,
-            'score_for_opponent': opp_score_for_user,
-            'tests_passed_for_user': user_tests_passed_for_user,
-            'total_tests_for_user': user_total_tests_for_user,
-            'tests_passed_for_opponent': opp_tests_passed_for_user,
-            'total_tests_for_opponent': opp_total_tests_for_user,
-        })
+        response_data = _build_match_response_for_user(
+            match, user_result, opponent_result, current_user.id,
+            user_info, opponent_info,
+            rating_change_opponent_override=0
+        )
+        response_data['ok'] = True
+        return jsonify(response_data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2022,6 +1320,45 @@ def update_last_seen():
         db.session.commit()
 
 
+def _extract_first_error_from_validation(validation: dict) -> str:
+    """
+    Extract first error message from validation results.
+    Returns empty string if no error found.
+    """
+    for result in (validation.get("results") or []):
+        if result.get("error"):
+            return str(result["error"])
+    return ""
+
+
+def _upsert_match_result_for_submission(match, user_id: int, attempt) -> None:
+    """
+    Create or update MatchResult for a duel submission.
+    Updates existing record or inserts new one, then commits.
+    """
+    match_result = MatchResult.query.filter_by(match_id=match.id, user_id=user_id).first()
+    now_utc = datetime.now(timezone.utc)
+    if match_result:
+        match_result.attempt_id = attempt.id
+        match_result.score = attempt.score or 0
+        match_result.tests_passed = attempt.tests_passed or 0
+        match_result.total_tests = attempt.total_tests or 0
+        match_result.execution_time = attempt.execution_time
+        match_result.submitted_at = now_utc
+    else:
+        match_result = MatchResult(
+            match_id=match.id,
+            user_id=user_id,
+            attempt_id=attempt.id,
+            score=attempt.score or 0,
+            tests_passed=attempt.tests_passed or 0,
+            total_tests=attempt.total_tests or 0,
+            execution_time=attempt.execution_time,
+            submitted_at=now_utc,
+        )
+        db.session.add(match_result)
+
+
 def calculate_task_score(
     task_points: int,
     tests_passed: int,
@@ -2031,6 +1368,10 @@ def calculate_task_score(
     avg_execution_time: float,
     time_limit: int,
 ) -> dict:
+    """
+    Calculate task score based on tests passed, first-try bonus, and speed.
+    Returns dict with keys: base, bonus, total. Total is capped at task_points.
+    """
     task_points = int(task_points or 0)
     total_tests = int(total_tests or 0)
     tests_passed = int(tests_passed or 0)
