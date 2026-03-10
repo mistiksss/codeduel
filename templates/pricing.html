@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тарифы - CodeDuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='reg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='premium.css') }}">
+</head>
+<body>
+    {% include 'includes/header.html' %}
+    <div class="login_container">
+        <div class="pricing_wrapper">
+            <h1 class="pricing_title">Выберите тариф</h1>
+            <p class="pricing_subtitle">Разблокируйте Pro для полного доступа к платформе</p>
+
+            <div class="pricing_cards">
+                <div class="pricing_card">
+                    <h3 class="pricing_card_title">FREE</h3>
+                    <div class="pricing_card_price">0 ₽</div>
+                    <ul class="pricing_features">
+                        <li>Базовый доступ</li>
+                        <li>Рейтинг ELO</li>
+                        <li>Ограниченная история (3 матча)</li>
+                    </ul>
+                    <button type="button" class="pricing_btn pricing_btn_disabled" {% if not is_premium|default(false) %}disabled{% endif %}>
+                        {% if not is_premium|default(false) %}Ваш текущий план{% else %}Базовый{% endif %}
+                    </button>
+                </div>
+
+                <div class="pricing_card pricing_card_pro">
+                    <span class="pro_badge">Рекомендуем</span>
+                    <h3 class="pricing_card_title">PRO</h3>
+                    <div class="pricing_card_price">$9.99<span class="price_period">/мес</span></div>
+                    <ul class="pricing_features">
+                        <li>Золотой профиль</li>
+                        <li>Полная история матчей</li>
+                        <li>Просмотр кода соперника (Learning Mode)</li>
+                        <li>Приоритетный поиск</li>
+                    </ul>
+                    <button type="button" class="pricing_btn {% if is_premium|default(false) %}pricing_btn_disabled{% else %}pricing_btn_pro{% endif %}" id="buyProBtn" {% if is_premium|default(false) %}disabled{% endif %}>
+                        {% if is_premium|default(false) %}Ваш текущий план{% else %}Купить Pro{% endif %}
+                    </button>
+                </div>
+            </div>
+
+            <a href="{{ url_for('profile') if current_user.is_authenticated else url_for('main') }}" class="pricing_back" target="_self">← {% if current_user.is_authenticated %}В профиль{% else %}На главную{% endif %}</a>
+        </div>
+    </div>
+
+    <script>
+        function buyPremium() {
+            const btn = document.getElementById('buyProBtn');
+            if (!btn || btn.disabled) return;
+            btn.disabled = true;
+            var origText = btn.textContent;
+            btn.textContent = 'Обработка...';
+
+            fetch('/api/payment/mock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            })
+            .then(function(r) {
+                if (!r.ok) {
+                    btn.disabled = false;
+                    btn.textContent = origText;
+                    return null;
+                }
+                return r.json();
+            })
+            .then(function(data) {
+                if (!data) return;
+                if (data.success) {
+                    btn.textContent = 'Активировано!';
+                    window.location.replace('/profile');
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = origText;
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.textContent = origText;
+            });
+        }
+
+        var buyBtn = document.getElementById('buyProBtn');
+        if (buyBtn) buyBtn.addEventListener('click', buyPremium);
+    </script>
+</body>
+</html>

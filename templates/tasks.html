@@ -5,28 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodeDuel - Задачи</title>
     <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro" rel="stylesheet">
-    <link rel="stylesheet" href="../static/tasks.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='tasks.css') }}">
 </head>
 <body>
-    <header>
-        <div class="header_left">
-            <div class="header_icon"></div>
-            <div class="header_name">CodeDuel</div>
-        </div>
-        <div class="header_center">
-            {% if active_match_id %}
-                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
-                    У вас есть активный матч → перейти
-                </a>
-            {% endif %}
-        </div>
-        <div class="header_right">
-            <a href="{{ url_for('profile') }}" class="header_link">Профиль</a>
-            <a href="{{ url_for('main_reg') }}" class="header_link">Главная</a>
-            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
-            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
-        </div>
-    </header>
+    {% include 'includes/header.html' %}
 
     <main>
         <div class="container">
@@ -137,7 +120,7 @@
                     noResults.id = 'noResultsMessage';
                     noResults.className = 'no-results';
                     noResults.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #b8b8b8;">
+                        <div class="no-results-inner">
                             <h3>Задачи не найдены</h3>
                             <p>Попробуйте изменить поисковый запрос или фильтр сложности</p>
                         </div>

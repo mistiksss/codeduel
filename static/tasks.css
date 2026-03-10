@@ -350,3 +350,9 @@ footer {
     border-color: rgba(184, 184, 184, 0.4);
 }
 
+.no-results-inner {
+    text-align: center;
+    padding: 40px;
+    color: #b8b8b8;
+}
+

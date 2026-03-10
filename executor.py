@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import tempfile
 import os
 import time
@@ -47,7 +48,7 @@ def run_code_python(code, input_data, time_limit):
             stdin_bytes += b"\n"
 
         result = subprocess.run(
-            ["python", file_path],
+            [sys.executable, file_path],
             input=stdin_bytes,
             capture_output=True,
             timeout=time_limit,

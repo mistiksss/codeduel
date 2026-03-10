@@ -5,20 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Лидерборд - CodeDuel</title>
     <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='liderboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='leaderboard.css') }}">
 </head>
 <body>
-    <header>
-        <div class="header-left">
-            <div class="header-icon"></div>
-            <div class="header-name">CodeDuel</div>
-        </div>
-        <div class="header-right">
-            <a href="{{ url_for('main_reg') }}" class="header-link">Главная</a>
-            <a href="{{ url_for('about_reg') }}" class="header-link">О нас</a>
-            <a href="{{ url_for('profile') }}" class="header-link">Профиль</a>
-        </div>
-    </header>
+    {% include 'includes/header.html' %}
     <main>
         <div class="container">
             <div class="leaderboard-header">
@@ -55,17 +46,12 @@
         async function updateLeaderboard() {
             try {
                 const response = await fetch('/api/leaderboard');
-                if (!response.ok) {
-                    throw new Error('Ошибка сети');
-                }
+                if (!response.ok) return;
                 const data = await response.json();
-
                 if (data.leaders) {
                     renderLeaderboard(data.leaders);
                 }
-            } catch (error) {
-                console.error('Ошибка при обновлении лидерборда:', error);
-            }
+            } catch (e) {}
         }
         function renderLeaderboard(leaders) {
             const container = document.getElementById('leaderboardContainer');
@@ -91,7 +77,10 @@
                 }
                 row.innerHTML = `
                     <div class="rank">${i}</div>
-                    <div class="username">${user ? user.username : '-'}</div>
+                    <div class="username">
+                        ${user ? user.username : '-'}
+                        ${user && user.is_premium ? '<span title="Premium"> 👑</span>' : ''}
+                    </div>
                     <div class="elo">${user ? user.elo : '-'}</div>
                 `;
 

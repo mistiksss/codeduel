@@ -304,3 +304,97 @@ footer {
 	font-size: 18px;
 	color: #fff;
 }
+
+.profile_logout {
+	font-size: 14px;
+	color: #888;
+	text-decoration: none;
+	transition: color 0.2s;
+}
+
+.profile_logout:hover {
+	color: #f87171;
+}
+
+.profile_badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #1a4d6e, #00D4FF33);
+    color: #00D4FF;
+    border: 1px solid #00D4FF;
+}
+
+.match_history_section {
+    margin-top: 32px;
+}
+
+.match_history_section h3 {
+    color: #fff;
+    margin-bottom: 16px;
+    font-size: 20px;
+}
+
+.match_row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #1C1C1C;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #333;
+}
+
+.match_result_win {
+    color: #4ade80;
+}
+
+.match_result_loss {
+    color: #f87171;
+}
+
+.match_result_draw {
+    color: #fbbf24;
+}
+
+.pro_badge_inline {
+    position: static;
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    top: auto;
+    left: auto;
+    transform: none;
+}
+
+.match_row_date {
+    color: #888;
+}
+
+.match_history_empty {
+    color: #888;
+}
+
+.profile_share {
+    margin-top: 24px;
+    color: #666;
+    font-size: 14px;
+}
+
+.profile_share a {
+    color: #00D4FF;
+}
+
+.profile_logout_wrap {
+    margin-top: 16px;
+}

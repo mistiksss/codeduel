@@ -776,6 +776,11 @@ main {
     margin-bottom: 0;
 }
 
+.opponent_item.opponent_typing .typing_indicator {
+    color: #00D4FF;
+    font-style: italic;
+}
+
 .opponent_label {
     color: #b8b8b8;
     font-size: 14px;
@@ -947,3 +952,47 @@ main {
 }
 
 .result_btn:hover { opacity: 0.92; }
+
+.connection_lost_banner {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: #b52a2a;
+    color: #fff;
+    padding: 12px 20px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.arena_hidden {
+    display: none;
+}
+
+.error_label {
+    display: none;
+    color: #ff6b6b;
+    margin-top: 10px;
+}
+
+.result_modal_stats_row {
+    margin-bottom: 10px;
+}
+
+.result_modal_rating_row {
+    opacity: 0.95;
+}
+
+.opponent_code_pre {
+    background: #1e1e1e;
+    padding: 16px;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow: auto;
+    font-family: monospace;
+    font-size: 14px;
+    white-space: pre-wrap;
+    margin: 0;
+}

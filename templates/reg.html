@@ -11,7 +11,7 @@
     <div class="login_container">
         <div class="login_card">
             <h1 class="login_title">Регистрация</h1>
-            <form class="login_form" method="POST" action="{{ url_for('register') }}">
+            <form class="login_form" method="POST" action="{{ url_for('auth.register') }}">
                 {{ form.hidden_tag() }}
                 {{ form.username(class_="form_input", placeholder="Имя пользователя") }}
                 {{ form.email(class_="form_input", placeholder="Email") }}
@@ -20,7 +20,7 @@
                 {{ form.submit(class_="login_btn") }}
             </form>
             <div class="register_section">
-                <a href="{{ url_for('login') }}" class="register_btn">Войти</a>
+                <a href="{{ url_for('auth.login') }}" class="register_btn">Войти</a>
             </div>
         </div>
     </div>

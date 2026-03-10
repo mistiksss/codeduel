@@ -313,6 +313,47 @@ main {
     font-variant-numeric: tabular-nums;
 }
 
+.search_spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border: 3px solid #333;
+    border-top-color: #00D4FF;
+    border-radius: 50%;
+    animation: search_spin 0.8s linear infinite;
+}
+
+@keyframes search_spin {
+    to { transform: rotate(360deg); }
+}
+
+.play_with_bot_section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #444;
+}
+
+.play_with_bot_text {
+    color: #888;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.play_with_bot_btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #1a4d6e;
+    color: #00D4FF;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.play_with_bot_btn:hover {
+    background: #25638c;
+    color: #fff;
+}
+
 .search_stats {
     background-color: #1C1C1C;
     border-radius: 12px;

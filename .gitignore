@@ -7,3 +7,6 @@ instance/
 *.sqlite3
 .idea/
 .vscode/
+.cursor/
+.copilot/
+.aider*

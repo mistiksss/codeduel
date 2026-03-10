@@ -4,20 +4,11 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>О нас - CodeDuel</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
 	<link rel="stylesheet" href="../static/about.css">
 </head>
 <body>
-	<header>
-		<div class="header_left">
-			<div class="trophy_icon"></div>
-			<div class="logo">CodeDuel</div>
-		</div>
-		<div class="header_right">
-			<a href="{{ url_for('login') }}" class="header_link">Профиль</a>
-			<a href="{{ url_for('main') }}" class="header_link">Главная</a>
-			<a href="{{url_for('login')}}" class="btn">Войти</a>
-		</div>
-	</header>
+	{% include 'includes/header.html' %}
 
 	<main>
 		<div class="container">

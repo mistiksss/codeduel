@@ -5,31 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ task.title }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../static/arena.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='arena.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='premium.css') }}">
 </head>
 <body>
-    <header>
-        <div class="header_left">
-            <div class="header_icon"></div>
-            <div class="header_name">{{ task.title }}</div>
-        </div>
-        <div class="header_center">
-            {% if active_match_id %}
-                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
-                    У вас есть активный матч
-                </a>
-            {% endif %}
-        </div>
-        <div class="header_right">
-            <a href="{{ url_for('main_page') }}" class="header_link">Главная</a>
-            <a href="{{ url_for('tasks') }}" class="header_link">Задачи</a>
-            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
-            {% if active_match_id %}
-                <button type="button" class="btn btn_surrender" id="surrenderBtn">Сдаться</button>
-            {% endif %}
-            <a href="{{ url_for('profile') }}" class="btn">Профиль</a>
-        </div>
-    </header>
+    {% if active_match_id %}{% set header_extra = '<button type="button" class="btn btn_surrender" id="surrenderBtn">Сдаться</button>' %}{% endif %}
+    {% include 'includes/header.html' %}
+
+    <div id="connectionLostBanner" class="connection_lost_banner">Соединение потеряно. Переподключение...</div>
 
     <main>
         <div class="problem">
@@ -60,13 +44,13 @@
                                 <div class="example_section">
                                     <div class="example_header">Ввод #1</div>
                                     <div class="example_content copyable" data-content="{{ task.example }}">
-                                        {{ task.example|safe }}
+                                        {{ task.example|safe_html }}
                                     </div>
                                 </div>
                                 <div class="example_section">
                                     <div class="example_header">Вывод #1</div>
                                     <div class="example_content copyable" data-content="{{ task.answer }}">
-                                        {{ task.answer|safe }}
+                                        {{ task.answer|safe_html }}
                                     </div>
                                 </div>
                             </div>
@@ -118,7 +102,7 @@
                     <div class="execution_output" id="executionOutput">
                         <div class="result_label">Результат:</div>
                         <div class="result_value" id="executionResult"></div>
-                        <div class="error_label" style="display:none; color: #ff6b6b; margin-top: 10px;">Ошибка:</div>
+                        <div class="error_label">Ошибка:</div>
                         <div class="error_value" id="executionError"></div>
                     </div>
                 </div>
@@ -155,6 +139,9 @@
                             <span class="opponent_label">Баллы:</span>
                             <span class="opponent_value" id="opponentScore">-</span>
                         </div>
+                        <div class="opponent_item opponent_typing arena_hidden" id="opponentTyping">
+                            <span class="opponent_label typing_indicator" id="opponentStatusText">Соперник пишет код</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -164,19 +151,42 @@
     </main>
 
     <!-- Всплывающее окно результата матча -->
-    <div class="result_overlay" id="resultOverlay" style="display:none;">
-        <div class="result_modal">
+    <div class="result_overlay arena_hidden" id="resultOverlay">
+        <div class="result_modal" id="resultModal">
             <div class="result_modal_header" id="resultTitle">Матч завершён</div>
+            <div class="result_modal_tabs" id="resultModalTabs">
+                <span class="result_tab result_tab_active" data-tab="summary">Результат</span>
+                <span class="result_tab" data-tab="opponent_code">Код соперника</span>
+            </div>
             <div class="result_modal_body" id="resultBody"></div>
-            <div class="result_modal_actions">
-                <a class="result_btn" href="{{ url_for('matchmaking_page') }}">В матчмейкинг</a>
+            <div class="result_modal_opponent_code arena_hidden" id="resultOpponentCode"></div>
+            <div class="result_modal_actions" id="resultModalActions">
+                <a class="result_btn" href="{{ url_for('match.matchmaking_page') }}">В матчмейкинг</a>
                 <button class="result_btn secondary" id="resultCloseBtn" type="button">Закрыть</button>
             </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://unpkg.com/monaco-editor@0.33.0/min/vs/loader.js"></script>
     <script>
+    window.__USER_ELO = {{ current_user.elo|default(1000)|int }};
+    window.__IS_PREMIUM = {{ 'true' if is_premium|default(false) else 'false' }};
+    const socket = io();
+    const ARENA_MATCH_ID = {{ match.id if match else 'null' }};
+    let currentMatchId = ARENA_MATCH_ID || null;
+    let joinedRoomId = null;
+
+    socket.on('disconnect', function() {
+        var banner = document.getElementById('connectionLostBanner');
+        if (banner) banner.style.display = 'block';
+    });
+    socket.on('connect', function() {
+        var banner = document.getElementById('connectionLostBanner');
+        if (banner) banner.style.display = 'none';
+        if (currentMatchId) socket.emit('join', { room: currentMatchId });
+    });
+
     require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.33.0/min/vs' }});
 
     require(['vs/editor/editor.main'], function() {
@@ -197,9 +207,19 @@
             automaticLayout: true
         });
 
-        let currentMatchId = null;
-        let opponentInterval = null;
-        let resultShown = false;
+        let typingDebounce = null;
+        function emitTyping() {
+            if (currentMatchId && socket) {
+                socket.emit('typing', { room: currentMatchId });
+            }
+        }
+        editor.onDidChangeModelContent(function() {
+            if (typingDebounce) clearTimeout(typingDebounce);
+            typingDebounce = setTimeout(emitTyping, 500);
+        });
+
+        resultShown = false;
+        let typingTimeout = null;
 
         function humanizeResult(resultForUser) {
             if (resultForUser === 'win') return 'ПОБЕДА';
@@ -230,17 +250,66 @@
             const myChange = matchStatus.rating_change_for_user;
 
             const myChangeText = (typeof myChange === 'number') ? (myChange >= 0 ? `+${myChange}` : `${myChange}`) : '0';
-            
 
             bodyEl.innerHTML = `
-                <div style="margin-bottom:10px;">
+                <div class="result_modal_stats_row">
                     Пройдено тестов: <b>${myPassed}/${myTotal}</b><br/>
                     Пройдено тестов соперника: <b>${oppPassed}/${oppTotal}</b>
                 </div>
-                <div style="opacity:0.95;">
+                <div class="result_modal_rating_row">
                     Изменение рейтинга: <b>${myChangeText}</b><br/>
                 </div>
             `;
+
+            var oppCodeEl = document.getElementById('resultOpponentCode');
+            var bodyEl2 = document.getElementById('resultBody');
+            var oppCode = matchStatus.opponent_code;
+            var canViewCode = matchStatus.opponent_code !== undefined && matchStatus.opponent_code !== null;
+            if (oppCodeEl) {
+                if (canViewCode) {
+                    oppCodeEl.innerHTML = '<pre class="opponent_code_pre">' + escapeHtml(String(oppCode || '')) + '</pre>';
+                } else {
+                    oppCodeEl.innerHTML = '<div class="opponent_code_locked"><span class="locked_icon">🔒</span><p>Код соперника доступен в Pro</p><a href="/pricing" class="result_btn result_btn_unlock">Разблокировать решение (Купить Pro)</a></div>';
+                }
+            }
+
+            var tabs = document.querySelectorAll('.result_tab');
+            var bodyWrap = bodyEl2 && bodyEl2.parentElement;
+            if (tabs.length >= 2) {
+                tabs.forEach(function(t) {
+                    t.onclick = function() {
+                        var tab = t.getAttribute('data-tab');
+                        tabs.forEach(function(x) { x.classList.remove('result_tab_active'); });
+                        t.classList.add('result_tab_active');
+                        if (bodyEl2) bodyEl2.style.display = (tab === 'summary') ? 'block' : 'none';
+                        if (oppCodeEl) oppCodeEl.style.display = (tab === 'opponent_code') ? 'block' : 'none';
+                    };
+                });
+            }
+            function escapeHtml(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+            var actionsEl = document.getElementById('resultModalActions');
+            var shareBtn = document.getElementById('resultShareBtn');
+            if (shareBtn) shareBtn.remove();
+            if (resultForUser === 'win' && actionsEl) {
+                var newElo = (window.__USER_ELO || 1000) + (typeof myChange === 'number' ? myChange : 0);
+                var shareUrl = window.location.origin + '/';
+                var shareText = 'Я победил в дуэли на CodeDuel! Мой рейтинг: ' + newElo + '. Попробуй и ты: ' + shareUrl;
+                var btn = document.createElement('button');
+                btn.className = 'result_btn';
+                btn.id = 'resultShareBtn';
+                btn.type = 'button';
+                btn.textContent = 'Поделиться победой';
+                btn.onclick = function() {
+                    navigator.clipboard.writeText(shareText).then(function() {
+                        btn.textContent = 'Скопировано!';
+                        setTimeout(function() { btn.textContent = 'Поделиться победой'; }, 2000);
+                    }).catch(function() {
+                        btn.textContent = 'Ошибка копирования';
+                    });
+                };
+                actionsEl.insertBefore(btn, actionsEl.firstChild);
+            }
 
             overlay.style.display = 'flex';
             const close = () => {
@@ -356,6 +425,41 @@
         }
 
 
+        function joinMatchRoom(matchId) {
+            if (!matchId || !socket || joinedRoomId === matchId) return;
+            joinedRoomId = matchId;
+            socket.emit('join', { room: matchId });
+            socket.on('match_update', function() {
+                var el = document.getElementById('opponentTyping');
+                if (el) el.style.display = 'none';
+                updateOpponentInfo();
+            });
+            socket.on('typing', function() {
+                var el = document.getElementById('opponentTyping');
+                var textEl = document.getElementById('opponentStatusText');
+                if (el && textEl) {
+                    textEl.textContent = 'Соперник пишет код';
+                    el.style.display = 'block';
+                    if (typingTimeout) clearTimeout(typingTimeout);
+                    typingTimeout = setTimeout(function() {
+                        el.style.display = 'none';
+                    }, 3000);
+                }
+            });
+            socket.on('opponent_testing', function() {
+                var el = document.getElementById('opponentTyping');
+                var textEl = document.getElementById('opponentStatusText');
+                if (el && textEl) {
+                    textEl.textContent = 'Соперник тестирует решение';
+                    el.style.display = 'block';
+                    if (typingTimeout) clearTimeout(typingTimeout);
+                }
+            });
+            window.addEventListener('beforeunload', function() {
+                socket.emit('leave', { room: matchId });
+            });
+        }
+
         async function checkActiveMatch() {
             const statusEl = document.getElementById('currentMatchStatus');
             if (!statusEl) return;
@@ -363,14 +467,13 @@
             currentMatchId = {{ match.id }};
             statusEl.textContent = 'Матч активен';
             statusEl.className = 'match_status_value active';
-            startOpponentTracking();
+            joinMatchRoom(currentMatchId);
             setTimeout(updateOpponentInfo, 300);
             return;
             {% endif %}
 
-            // Если у тебя есть эндпоинт /api/match/active/<task_id> — оставляем как было
             try {
-                const response = await fetch(`/api/match/active/{{ task.id }}`, {
+                const response = await fetch(`/api/match/active`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -381,12 +484,10 @@
                     currentMatchId = data.match_id;
                     statusEl.textContent = 'Матч активен';
                     statusEl.className = 'match_status_value active';
-                    startOpponentTracking();
-
-                    setTimeout(updateOpponentInfo, 1000);
+                    joinMatchRoom(currentMatchId);
+                    setTimeout(updateOpponentInfo, 500);
                 }
             } catch (error) {
-                // Ошибка скрыта
             }
         }
 
@@ -439,15 +540,9 @@
             }
         }
 
-        function startOpponentTracking() {
-            if (opponentInterval) clearInterval(opponentInterval);
-            opponentInterval = setInterval(updateOpponentInfo, 3000);
-        }
-
         function stopOpponentTracking() {
-            if (opponentInterval) {
-                clearInterval(opponentInterval);
-                opponentInterval = null;
+            if (currentMatchId && socket) {
+                socket.emit('leave', { room: currentMatchId });
             }
         }
 
@@ -485,14 +580,10 @@
                     document.getElementById('executionResult').textContent = result.output || '(пустой вывод)';
                 } else {
                     document.getElementById('executionResult').textContent = '';
-                    document.getElementById('executionError').textContent = result.error || 'Неизвестная ошибка';
-                    document.querySelector('.error_label').style.display = 'block';
+                    document.getElementById('executionError').textContent = result.error || '';
+                    document.querySelector('.error_label').style.display = result.error ? 'block' : 'none';
                 }
-            } catch (error) {
-                document.getElementById('executionResult').textContent = '';
-                document.getElementById('executionError').textContent = 'Ошибка подключения к серверу';
-                document.querySelector('.error_label').style.display = 'block';
-            }
+            } catch (e) {}
         }
 
         async function submitSolution() {
@@ -544,19 +635,18 @@
                     `;
 
                     setTimeout(loadAttemptsHistory, 1000);
-                    if (result.match_id && document.getElementById('currentMatchStatus')) {
+                    if (result.match_id) {
                         currentMatchId = result.match_id;
-                        setTimeout(updateOpponentInfo, 1500);
+                        joinMatchRoom(currentMatchId);
+                        setTimeout(updateOpponentInfo, 500);
                     }
                 } else {
-                    document.getElementById('testStats').innerHTML = `
-                        <div class="stats_placeholder error">Ошибка при отправке решения: ${result.error || 'Неизвестная ошибка'}</div>
-                    `;
+                    document.getElementById('testStats').innerHTML =
+                        '<div class="stats_placeholder">Попробуйте ещё раз</div>';
                 }
-            } catch (error) {
-                document.getElementById('testStats').innerHTML = `
-                    <div class="stats_placeholder error">Ошибка подключения к серверу</div>
-                `;
+            } catch (e) {
+                document.getElementById('testStats').innerHTML =
+                    '<div class="stats_placeholder">Попробуйте ещё раз</div>';
             }
         }
 
@@ -645,17 +735,11 @@
                         body: JSON.stringify({})
                     });
                     const data = await resp.json();
-                    if (!resp.ok) {
-                        alert(data?.error || 'Не удалось сдаться');
-                        return;
-                    }
+                    if (!resp.ok) return;
                     showMatchResultModal(data, () => {
                         window.location.href = '/profile';
                     });
-                } catch (e) {
-                    console.error(e);
-                    alert('Ошибка сети при сдаче');
-                }
+                } catch (e) {}
             });
         }
 

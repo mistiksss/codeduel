@@ -1,0 +1,32 @@
+{# Единый header для всех страниц. Переменная active_page задаётся через context_processor. #}
+<header>
+    <div class="header_left">
+        <a href="{{ url_for('main_reg') if current_user.is_authenticated else url_for('main') }}" class="header_logo_link">
+            <div class="header_icon"></div>
+            <div class="header_name">{{ header_title|default('CodeDuel') }}</div>
+        </a>
+    </div>
+    <div class="header_center">
+        {% if active_match_id %}
+            <a class="active_match_banner" href="{{ url_for('match.duel_arena', match_id=active_match_id) }}">
+                У вас есть активный матч → перейти
+            </a>
+        {% endif %}
+    </div>
+    <div class="header_right">
+        <a href="{{ url_for('main_reg') if current_user.is_authenticated else url_for('main') }}" class="header_link {{ 'header_link_active' if active_page == 'main' else '' }}">Главная</a>
+        <a href="{{ url_for('tasks') }}" class="header_link {{ 'header_link_active' if active_page == 'tasks' else '' }}">Задачи</a>
+        <a href="{{ url_for('payment.pricing') }}" class="header_link header_link_premium {{ 'header_link_active' if active_page == 'premium' else '' }}">Premium</a>
+        <a href="{{ url_for('leaderboard') }}" class="header_link {{ 'header_link_active' if active_page == 'leaderboard' else '' }}">Таблица лидеров</a>
+        <a href="{{ url_for('about_reg') if current_user.is_authenticated else url_for('about') }}" class="header_link {{ 'header_link_active' if active_page == 'about' else '' }}">О нас</a>
+        {% if header_extra %}
+            {{ header_extra|safe }}
+        {% endif %}
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('profile') }}" class="btn {{ 'btn_active' if active_page == 'profile' else '' }}">Профиль</a>
+            <a href="{{ url_for('auth.logout') }}" class="header_logout">Выйти</a>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}" class="btn">Войти</a>
+        {% endif %}
+    </div>
+</header>

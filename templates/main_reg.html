@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodeDuel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="../static/main_reg.css">
     <script type="importmap">
     {
@@ -15,25 +16,7 @@
     </script>
 </head>
 <body>
-    <header>
-        <div class="header_left">
-            <div class="header_icon"></div>
-            <div class="header_name">CodeDuel</div>
-        </div>
-        <div class="header_center">
-            {% if active_match_id %}
-                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
-                    У вас есть активный матч
-                </a>
-            {% endif %}
-        </div>
-        <div class="header_right">
-            <a href="{{ url_for('profile') }}" class="header_link">Профиль</a>
-            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
-            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
-            <a href="{{ url_for('tasks') }}" class="btn">Задачи</a>
-        </div>
-    </header>
+    {% include 'includes/header.html' %}
 
     <main>
         <div class="container">
@@ -43,7 +26,7 @@
                 <div class="text text_2">Реальные соперники.</div>
                 <div class="text text_3">Реальный рейтинг.</div>
                 <div class="btns">
-                    <a href="{{ url_for('matchmaking_page') }}" class="btn_start">Начать матч</a>
+                    <a href="{{ url_for('match.matchmaking_page') }}" class="btn_start">Начать матч</a>
                     <a href="{{ url_for('tasks')}}" class="btn_train">Задачи</a>
                 </div>
                 <div class="im">
@@ -61,7 +44,7 @@
                 </div>
                 <div class="card">
                     <h3>Встроенный редактор кода</h3>
-                    <p>Профессиональная среда разработки. Поддержка Python, JavaScript, C++ и других языков с автодополнением.</p>
+                    <p>Профессиональная среда разработки. Python (JS и C++ скоро).</p>
                 </div>
                 <div class="card">
                     <h3>Быстрый матчмейкинг</h3>

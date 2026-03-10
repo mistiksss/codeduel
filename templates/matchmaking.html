@@ -4,28 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Поиск дуэли - CodeDuel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='matchmaking.css') }}">
 </head>
 <body>
-    <header>
-        <div class="header_left">
-            <div class="header_icon"></div>
-            <div class="header_name">CodeDuel</div>
-        </div>
-        <div class="header_center">
-            {% if active_match_id %}
-                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
-                    У вас есть активный матч → перейти
-                </a>
-            {% endif %}
-        </div>
-        <div class="header_right">
-            <a href="{{ url_for('profile') }}" class="header_link">Профиль</a>
-            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
-            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
-            <a href="{{ url_for('tasks') }}" class="btn">Задачи</a>
-        </div>
-    </header>
+    {% include 'includes/header.html' %}
 
     <main>
     <div class="container">
@@ -83,7 +66,8 @@
         <!-- Статус поиска -->
         <div id="searchStatus" class="search_status hidden">
             <div class="status_header">
-                <div class="status_text" id="statusText">Подбираем соперника...</div>
+                <div class="search_spinner" id="searchSpinner"></div>
+                <div class="status_text" id="statusText">Ищем соперника... В очереди: <span id="queueCount">0</span> человек</div>
                 <div class="timer" id="searchTimer">0:00</div>
             </div>
 
@@ -92,6 +76,11 @@
                     <span class="stat_label">Игроков в очереди:</span>
                     <span class="stat_value" id="totalPlayers">0</span>
                 </div>
+            </div>
+
+            <div id="playWithBotSection" class="play_with_bot_section hidden">
+                <p class="play_with_bot_text">Долго ждёте? Потренируйтесь на задаче.</p>
+                <a href="{{ url_for('match.play_with_bot') }}" id="playWithBotBtn" class="play_with_bot_btn">Потренироваться</a>
             </div>
 
             <div id="matchFound" class="match_found hidden">
@@ -175,6 +164,8 @@
     const totalPlayers = document.getElementById('totalPlayers');
     const totalInQueue = document.getElementById('totalInQueue');
     const totalOnline = document.getElementById('totalOnline');
+    const queueCountEl = document.getElementById('queueCount');
+    const playWithBotSection = document.getElementById('playWithBotSection');
 
     /* сложности */
     function selectDifficulty(difficulty) {
@@ -237,6 +228,8 @@
         clearInterval(matchmakingInterval);
         clearInterval(pingInterval);
         clearInterval(pollInterval);
+        if (queueCountInterval) clearInterval(queueCountInterval);
+        queueCountInterval = null;
         isSearching = false;
         statusDiv.classList.add('hidden');
         updateSearchButton(false);
@@ -255,10 +248,28 @@
         searchSeconds = 0;
         statusDiv.classList.remove('hidden');
         matchFound.classList.add('hidden');
-        statusText.textContent = 'Подбираем соперника...';
+        playWithBotSection.classList.add('hidden');
+        if (queueCountEl) queueCountEl.textContent = '0';
         searchTimer.textContent = '0:00';
         matchmakingInterval = setInterval(updateSearchTime, 1000);
         startPing();
+        fetchQueueCount();
+        if (queueCountInterval) clearInterval(queueCountInterval);
+        queueCountInterval = setInterval(fetchQueueCount, 2500);
+    }
+
+    let queueCountInterval = null;
+    async function fetchQueueCount() {
+        if (!isSearching) return;
+        try {
+            const r = await fetch(`${API_BASE}/matchmaking/queue_count`);
+            const d = await r.json();
+            const n = typeof d.count === 'number' ? d.count : 0;
+            const el = document.getElementById('queueCount');
+            if (el) el.textContent = n;
+            if (totalPlayers) totalPlayers.textContent = n;
+            if (totalInQueue) totalInQueue.textContent = n;
+        } catch (e) {}
     }
 
     function updateSearchTime() {
@@ -266,6 +277,10 @@
         const m = Math.floor(searchSeconds / 60);
         const s = searchSeconds % 60;
         searchTimer.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        if (searchSeconds >= 30 && playWithBotSection) {
+            playWithBotSection.classList.remove('hidden');
+            if (queueCountInterval) clearInterval(queueCountInterval);
+        }
     }
 
     /* ping (держим запись в очереди живой) */
@@ -289,8 +304,11 @@
         const r = await fetch(`${API_BASE}/matchmaking/poll`);
         const d = await r.json();
         if (d.queue_stats && typeof d.queue_stats.total_players === 'number') {
-            totalPlayers.textContent = d.queue_stats.total_players;
-            totalInQueue.textContent = d.queue_stats.total_players;
+            const n = d.queue_stats.total_players;
+            totalPlayers.textContent = n;
+            totalInQueue.textContent = n;
+            const qc = document.getElementById('queueCount');
+            if (qc) qc.textContent = n;
         }
         if (d.match_found) {
             clearInterval(pollInterval);

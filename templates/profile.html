@@ -3,45 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль - CodeDuel</title>
+    <title>{% if is_own_profile %}Профиль{% else %}Профиль {{ profile_user.username }}{% endif %} - CodeDuel</title>
     <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../static/profile.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='profile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='premium.css') }}">
 </head>
 <body>
-    <header>
-        <div class="header_left">
-            <div class="header_icon"></div>
-            <div class="header_name">CodeDuel</div>
-        </div>
-        <div class="header_center">
-            {% if active_match_id %}
-                <a class="active_match_banner" href="{{ url_for('duel_arena', match_id=active_match_id) }}">
-                    У вас есть активный матч → перейти
-                </a>
-            {% endif %}
-        </div>
-        <div class="header_right">
-            <a href="{{ url_for('main_reg') }}" class="header_link">Главная</a>
-            <a href="{{ url_for('about_reg') }}" class="header_link">О нас</a>
-            <a href="{{ url_for('liderboard') }}" class="header_link">Таблица лидеров</a>
-            <a href="{{ url_for('tasks') }}" class="btn">Задачи</a>
-        </div>
-    </header>
+    {% include 'includes/header.html' %}
 
     <main>
         <div class="container">
             <div class="profile_header">
-                <div class="avatar"></div>
+                <div class="avatar{% if is_premium %} avatar_pro{% endif %}"></div>
                 <div class="profile_info">
-                    <h1 class="username">{{ current_user.username }}</h1>
-                    <p class="user_title">{{ current_user.title }}</p>
+                    <h1 class="username">{{ profile_user.username }}{% if is_premium %} <span class="pro_badge pro_badge_inline">👑 PRO</span>{% endif %}</h1>
+                    {% if badges %}
+                        <div class="profile_badges">
+                            {% for name, desc in badges %}
+                                <span class="badge" title="{{ desc }}">{{ name }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <p class="user_title">{{ profile_user.title }}</p>
                     <div class="profile_stats">
                         <div class="stat_item">
-                            <span class="stat_value">{{ current_user.elo }}</span>
+                            <span class="stat_value">{{ profile_user.elo }}</span>
                             <span class="stat_label">ELO рейтинг</span>
                         </div>
                         <div class="stat_item">
-                            <span class="stat_value">#1</span>
+                            <span class="stat_value">#{{ rank }}</span>
                             <span class="stat_label">В рейтинге</span>
                         </div>
                     </div>
@@ -53,41 +44,74 @@
                     <div class="card_icon">🤩</div>
                     <div class="card_content">
                         <h3>Рейтинг ELO</h3>
-                        <div class="card_value">{{ current_user.elo }} ELO</div>
+                        <div class="card_value">{{ profile_user.elo }} ELO</div>
                     </div>
                 </div>
                 <div class="card">
                     <div class="card_icon">⚡</div>
                     <div class="card_content">
                         <h3>Всего дуэлей</h3>
-                        <div class="card_value">{{ current_user.games_played}}</div>
-                        <div class="card_detail">Побед: {{ current_user.wins}}</div>
-                        <div class="card_detail">Поражений: {{ current_user.losses}}</div>
+                        <div class="card_value">{{ profile_user.games_played }}</div>
+                        <div class="card_detail">Побед: {{ profile_user.wins }}</div>
+                        <div class="card_detail">Поражений: {{ profile_user.losses }}</div>
                     </div>
                 </div>
                 <div class="card">
                     <div class="card_icon">📈</div>
                     <div class="card_content">
                         <h3>Винрейт</h3>
-                        <div class="card_value">{{ (current_user.wins / (current_user.wins + current_user.losses) * 100) | round(1) if (current_user.wins + current_user.losses) > 0 else 0 }}%</div>
+                        <div class="card_value">{{ winrate }}%</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card_icon">🔥</div>
+                    <div class="card_content">
+                        <h3>Текущий стрик побед</h3>
+                        <div class="card_value">{{ current_streak }}</div>
                     </div>
                 </div>
                 <div class="card">
                     <div class="card_icon">🏆</div>
                     <div class="card_content">
                         <h3>Лучший результат</h3>
-                        <div class="card_value">{{ current_user.best_elo }} ELO</div>
+                        <div class="card_value">{{ profile_user.best_elo }} ELO</div>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card_icon">🔥</div>
+                    <div class="card_icon">📋</div>
                     <div class="card_content">
                         <h3>Решено задач</h3>
                         <div class="card_value">{{ solved_tasks_single }}</div>
                     </div>
                 </div>
-
             </div>
+
+            <div class="match_history_section">
+                <h3>История матчей</h3>
+                {% if match_history %}
+                    {% for m in match_history %}
+                        <div class="match_row">
+                            <span>vs {{ m.opponent }}</span>
+                            <span class="match_result_{{ m.result }}">{% if m.result == 'win' %}Победа{% elif m.result == 'loss' %}Поражение{% else %}Ничья{% endif %}{% if m.rating_change is not none %} ({{ '+' if m.rating_change >= 0 else '' }}{{ m.rating_change }}){% endif %}</span>
+                            <span class="match_row_date">{{ m.date }}</span>
+                        </div>
+                    {% endfor %}
+                    {% if not is_premium %}
+                        {% for _ in range(3) %}
+                        <div class="blur_placeholder">
+                            🔒 Доступно в Pro <a href="{{ url_for('payment.pricing') }}">Купить Pro</a>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                {% else %}
+                    <p class="match_history_empty">Пока нет завершённых матчей.</p>
+                {% endif %}
+            </div>
+
+            {% if is_own_profile %}
+                <p class="profile_share">Поделиться профилем: <a href="{{ url_for('user_public_profile', username=profile_user.username) }}">{{ request.url_root.rstrip('/') }}{{ url_for('user_public_profile', username=profile_user.username) }}</a></p>
+                <p class="profile_logout_wrap"><a href="{{ url_for('auth.logout') }}" class="profile_logout">Выйти из аккаунта</a></p>
+            {% endif %}
         </div>
     </main>
 

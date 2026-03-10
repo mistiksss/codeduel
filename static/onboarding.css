@@ -1,0 +1,57 @@
+.onboarding_step {
+    margin-bottom: 28px;
+}
+
+.onboarding_step h3 {
+    color: #00D4FF;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.onboarding_lang_select {
+    width: 100%;
+    padding: 14px;
+    background: #2C2C2C;
+    border: 1px solid #454545;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+}
+
+.onboarding_lang_select option:disabled {
+    color: #666;
+}
+
+.cta_duel {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 32px auto 0;
+    padding: 24px 32px;
+    background: linear-gradient(135deg, #00D4FF, #0099cc);
+    color: #000;
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    border-radius: 12px;
+    text-decoration: none;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.cta_duel:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 24px rgba(0, 212, 255, 0.5);
+    color: #000;
+}
+
+.login_card_onboarding {
+    max-width: 520px;
+}
+
+.onboarding_subtitle {
+    color: #b8b8b8;
+    text-align: center;
+    margin-bottom: 32px;
+    font-size: 16px;
+}

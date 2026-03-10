@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Слишком много запросов - CodeDuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='reg.css') }}">
+</head>
+<body>
+    <div class="login_container">
+        <div class="login_card">
+            <h1 class="login_title">Слишком много запросов</h1>
+            <p class="error_text">Слишком много попыток входа или неверных запросов. Подождите минуту и попробуйте снова.</p>
+            <div class="error_actions">
+                <a href="{{ url_for('auth.login') }}" class="login_btn">Вернуться к входу</a>
+                <a href="{{ url_for('main') }}" class="register_btn">На главную</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

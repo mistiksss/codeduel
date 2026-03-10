@@ -108,3 +108,27 @@ body {
     background-color: #00D4FF;
     color: #000;
 }
+
+/* Страница ошибки 429 */
+.error_text {
+    color: #b8b8b8;
+    font-size: 16px;
+    line-height: 1.5;
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.error_actions {
+    text-align: center;
+}
+
+.error_actions .login_btn {
+    display: inline-block;
+    width: auto;
+    padding: 12px 28px;
+}
+
+.error_actions .register_btn {
+    margin-top: 16px;
+    display: inline-block;
+}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добро пожаловать - CodeDuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='reg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='onboarding.css') }}">
+</head>
+<body>
+    <div class="login_container">
+        <div class="login_card login_card_onboarding">
+            <h1 class="login_title">Добро пожаловать в CodeDuel</h1>
+            <p class="onboarding_subtitle">Выбери язык и начни первую дуэль</p>
+
+            <div class="onboarding_step">
+                <h3>Язык программирования</h3>
+                <select class="onboarding_lang_select" name="language" id="langSelect">
+                    <option value="python" selected>Python</option>
+                    <option value="javascript" disabled>JavaScript — Скоро</option>
+                    <option value="cpp" disabled>C++ — Скоро</option>
+                    <option value="java" disabled>Java — Скоро</option>
+                </select>
+            </div>
+
+            <a href="{{ url_for('match.matchmaking_page') }}" class="cta_duel">Найти первую дуэль</a>
+        </div>
+    </div>
+</body>
+</html>
