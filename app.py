@@ -1,5 +1,5 @@
 from flask import Flask, render_template, url_for, redirect, request, jsonify
-from flask_login import login_user, LoginManager, login_required, logout_user, current_user
+from flask_login import LoginManager, login_required, current_user
 from flask_bcrypt import Bcrypt
 try:
     from flask_limiter import Limiter
@@ -30,10 +30,21 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_recycle': 300,
     'pool_pre_ping': True,
 }
+
 db.init_app(app)
 
 from models import User, Task, TestCase, Attempt, Match, MatchResult, MatchmakingQueue
-from forms import RegisterForm, LoginForm
+from flask_socketio import SocketIO
+bcrypt = Bcrypt(app)
+app.bcrypt = bcrypt
+
+socketio = SocketIO(app, cors_allowed_origins="*")
+app.socketio = socketio
+
+from sockets import register_socket_handlers
+register_socket_handlers(socketio)
+
+# Import services AFTER app and db are initialized to avoid circular import issues
 from services.match_service import (
     to_utc_aware,
     normalize_match_started_at,
@@ -46,19 +57,15 @@ from services.match_service import (
 )
 from services.matchmaking_service import MatchmakingSystem
 from services.scoring import validate_solution, calculate_task_score
-from flask_socketio import SocketIO
-bcrypt = Bcrypt(app)
-app.bcrypt = bcrypt
-
-socketio = SocketIO(app, cors_allowed_origins="*")
-app.socketio = socketio
-
-from sockets import register_socket_handlers
-
-register_socket_handlers(socketio)
 
 if LIMITER_AVAILABLE:
-    limiter = Limiter(app=app, key_func=get_remote_address)
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        storage_uri=os.environ.get('REDIS_URL') or 'memory://',
+        default_limits=[],
+        strategy='fixed-window',
+    )
 else:
     limiter = None
 
@@ -73,7 +80,6 @@ def load_user(user_id):
 
 
 def _get_active_page():
-    """Map request endpoint to active_page for header highlighting."""
     ep = request.endpoint if request else None
     if ep in ('main', 'main_page', 'main_reg'):
         return 'main'
@@ -81,8 +87,6 @@ def _get_active_page():
         return 'tasks'
     if ep in ('profile', 'user_public_profile'):
         return 'profile'
-    if ep == 'payment.pricing':
-        return 'premium'
     if ep == 'leaderboard':
         return 'leaderboard'
     if ep in ('about', 'about_reg'):
@@ -151,11 +155,9 @@ def main():
 
 from routes.auth import auth_bp
 from routes.match import match_bp
-from routes.payment import payment_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(match_bp)
-app.register_blueprint(payment_bp)
 app.matchmaking_system = matchmaking_system
 
 if limiter:
@@ -165,12 +167,10 @@ if limiter:
 
 @app.errorhandler(429)
 def too_many_requests(e):
-    """Кастомная страница при превышении лимита запросов (5 в минуту)."""
     return render_template('error_429.html'), 429
 
 
 def _user_badges(user):
-    """Return list of badge names for gamification (hardcoded rules)."""
     badges = []
     wins = getattr(user, 'wins', 0) or 0
     streak = getattr(user, 'current_streak', 0) or 0
@@ -182,7 +182,6 @@ def _user_badges(user):
 
 
 def _profile_context(profile_user, match_limit=5):
-    """Build profile data for a user: stats, last N matches, badges, rank."""
     user_attempts = Attempt.query.filter_by(user_id=profile_user.id).all()
     total_attempts = len(user_attempts)
     successful_attempts = len([a for a in user_attempts if a.status == 'accepted'])
@@ -248,21 +247,16 @@ def profile():
         current_user.best_elo = current_user.elo
         db.session.commit()
 
-    match_limit = 20 if (hasattr(current_user, 'has_premium') and current_user.has_premium()) else 3
-    ctx = _profile_context(current_user, match_limit=match_limit)
+    ctx = _profile_context(current_user, match_limit=3)
     ctx['is_own_profile'] = True
-    ctx['is_premium'] = hasattr(current_user, 'has_premium') and current_user.has_premium()
     return render_template('profile.html', **ctx)
 
 
 @app.route('/user/<username>')
 def user_public_profile(username):
-    """Public profile by username (shareable link)."""
     profile_user = User.query.filter_by(username=username).first_or_404()
-    match_limit = 20 if (hasattr(profile_user, 'has_premium') and profile_user.has_premium()) else 3
-    ctx = _profile_context(profile_user, match_limit=match_limit)
+    ctx = _profile_context(profile_user, match_limit=3)
     ctx['is_own_profile'] = current_user.is_authenticated and current_user.id == profile_user.id
-    ctx['is_premium'] = hasattr(profile_user, 'has_premium') and profile_user.has_premium()
     return render_template('profile.html', **ctx)
 
 
@@ -340,8 +334,7 @@ def task_detail(task_id):
         opponent_id = active_match.opponent_id if current_user.id == active_match.user_id else active_match.user_id
         opponent = db.session.get(User, opponent_id)
 
-    is_premium = getattr(current_user, 'has_premium', lambda: False)() if current_user.is_authenticated else False
-    return render_template('arena.html', task=task, match=active_match, active_match=active_match, opponent=opponent, is_premium=is_premium)
+    return render_template('arena.html', task=task, match=active_match, active_match=active_match, opponent=opponent)
 
 
 @app.route('/main')
@@ -361,7 +354,6 @@ def main_reg():
 
 @app.route('/leaderboard')
 def leaderboard():
-    """Leaderboard page (top 50 by ELO)."""
     leaders = User.query.order_by(desc(User.elo)).limit(50).all()
     for rank, user in enumerate(leaders, 1):
         user.rank = rank
@@ -379,7 +371,6 @@ def api_leaderboard():
             'elo': user.elo,
             'rank': rank,
             'is_current_user': current_user.is_authenticated and user.id == current_user.id,
-            'is_premium': hasattr(user, 'has_premium') and user.has_premium(),
         })
     return jsonify({'leaders': leaderboard_data})
 
@@ -403,7 +394,6 @@ def get_task_attempts(task_id):
                 'language': attempt.language,
                 'status': attempt.status,
                 'execution_time': round(attempt.execution_time, 3) if attempt.execution_time else None,
-                'memory_used': attempt.memory_used,
                 'tests_passed': attempt.tests_passed,
                 'total_tests': attempt.total_tests,
                 'score': attempt.score,
@@ -435,7 +425,7 @@ def submit_solution():
         if language != 'python':
             return jsonify({'error': 'Only Python is supported'}), 400
 
-        MAX_CODE_LENGTH = 10 * 1024  # 10 KB
+        MAX_CODE_LENGTH = 10 * 1024
         if len(code) > MAX_CODE_LENGTH:
             return jsonify({'error': f'Code exceeds maximum length ({MAX_CODE_LENGTH} characters)'}), 400
 
@@ -545,6 +535,7 @@ def submit_solution():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
 
 @app.route('/api/run', methods=['POST'])
 @login_required

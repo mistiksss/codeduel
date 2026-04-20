@@ -26,34 +26,12 @@ class User(db.Model, UserMixin):
     preferred_language = db.Column(db.String(20), default='python')
     experience_level = db.Column(db.String(20), default='novice')
     current_streak = db.Column(db.Integer, default=0)
-    is_premium = db.Column(db.Boolean, default=False)
-    premium_until = db.Column(db.DateTime, nullable=True)
-
-    def has_premium(self) -> bool:
-        """Check if user has active premium. Resets is_premium if expired."""
-        if not getattr(self, 'is_premium', False):
-            return False
-        until = getattr(self, 'premium_until', None)
-        if until is None:
-            return bool(self.is_premium)
-        now = datetime.now(timezone.utc)
-        if getattr(until, 'tzinfo', None) is None:
-            until = until.replace(tzinfo=timezone.utc)
-        if until < now:
-            self.is_premium = False
-            self.premium_until = None
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-            return False
-        return True
 
 
 class TestCase(db.Model):
     __tablename__ = 'test_cases'
     id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    task_id = db.Column(db.ForeignKey('tasks.id'), nullable=False)
     input_data = db.Column(db.Text, nullable=False)
     expected_output = db.Column(db.Text, nullable=False)
     is_hidden = db.Column(db.Boolean, default=False)
@@ -67,27 +45,21 @@ class Task(db.Model):
     description = db.Column(db.Text)
     input_description = db.Column(db.Text)
     output_description = db.Column(db.Text)
-    difficulty_level = db.Column(db.Integer)
     difficulty = db.Column(db.String(20), default='medium')
     points = db.Column(db.Integer, default=20)
     time_limit = db.Column(db.Integer, default=2)
-    memory_limit = db.Column(db.Integer, default=256)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    example = db.Column(db.Text)
-    answer = db.Column(db.Text)
     test_cases = db.relationship('TestCase', backref='task', lazy=True, cascade='all, delete-orphan')
 
 
 class Attempt(db.Model):
     __tablename__ = 'attempts'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    user_id = db.Column(db.ForeignKey('users.id'), nullable=False)
+    task_id = db.Column(db.ForeignKey('tasks.id'), nullable=False)
     code = db.Column(db.Text, nullable=False)
     language = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(50), nullable=False)
     execution_time = db.Column(db.Float)
-    memory_used = db.Column(db.Integer)
     tests_passed = db.Column(db.Integer)
     total_tests = db.Column(db.Integer)
     score = db.Column(db.Integer)
@@ -101,9 +73,9 @@ class Attempt(db.Model):
 class Match(db.Model):
     __tablename__ = 'matches'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    opponent_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    user_id = db.Column(db.ForeignKey('users.id'), nullable=False)
+    opponent_id = db.Column(db.ForeignKey('users.id'), nullable=False)
+    task_id = db.Column(db.ForeignKey('tasks.id'), nullable=False)
     result = db.Column(db.String(10))
     user_rating_change = db.Column(db.Integer, default=0)
     opponent_rating_change = db.Column(db.Integer, default=0)
@@ -120,9 +92,9 @@ class Match(db.Model):
 class MatchResult(db.Model):
     __tablename__ = 'match_results'
     id = db.Column(db.Integer, primary_key=True)
-    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    attempt_id = db.Column(db.Integer, db.ForeignKey('attempts.id'), nullable=False)
+    match_id = db.Column(db.ForeignKey('matches.id'), nullable=False)
+    user_id = db.Column(db.ForeignKey('users.id'), nullable=False)
+    attempt_id = db.Column(db.ForeignKey('attempts.id'), nullable=False)
     score = db.Column(db.Integer, default=0)
     tests_passed = db.Column(db.Integer, default=0)
     total_tests = db.Column(db.Integer, default=0)
@@ -137,9 +109,9 @@ class MatchResult(db.Model):
 class MatchmakingQueue(db.Model):
     __tablename__ = 'matchmaking_queue'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.ForeignKey('users.id'), nullable=False)
     elo = db.Column(db.Integer, nullable=False)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=True)
+    task_id = db.Column(db.ForeignKey('tasks.id'), nullable=True)
     difficulty = db.Column(db.String(20))
     joined_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_ping = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

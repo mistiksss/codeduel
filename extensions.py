@@ -1,4 +1,4 @@
-"""Shared Flask extensions (SQLAlchemy, etc.)."""
+"""Flask extensions initialization."""
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()

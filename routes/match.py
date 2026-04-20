@@ -180,11 +180,6 @@ def get_match_status(match_id):
             match, user_result, opponent_result, current_user.id,
             user_info, opponent_info, include_participants=True
         )
-        if hasattr(current_user, 'has_premium') and current_user.has_premium():
-            if opponent_result and opponent_result.attempt_id:
-                opp_attempt = db.session.get(Attempt, opponent_result.attempt_id)
-                if opp_attempt:
-                    response_data['opponent_code'] = opp_attempt.code
         return jsonify(response_data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -244,7 +239,7 @@ def _ensure_forfeit_result(match, user_id: int, score: int, tests_passed: int, t
     attempt = Attempt(
         user_id=user_id, task_id=match.task_id, code='', language='forfeit',
         status='FORFEIT_WIN' if user_id == winner_id else 'FORFEIT_LOSS',
-        execution_time=0.0, memory_used=0, tests_passed=tests_passed, total_tests=total,
+        execution_time=0.0, tests_passed=tests_passed, total_tests=total,
         score=score, error_message=None, submitted_at=now_ts,
     )
     db.session.add(attempt)
@@ -301,11 +296,10 @@ def forfeit_active_match():
 @login_required
 def get_match_history():
     try:
-        limit = 20 if (hasattr(current_user, 'has_premium') and current_user.has_premium()) else 3
         matches = Match.query.filter(
             or_(Match.user_id == current_user.id, Match.opponent_id == current_user.id),
             Match.result != None
-        ).order_by(Match.created_at.desc()).limit(limit).all()
+        ).order_by(Match.created_at.desc()).limit(3).all()
         opponent_ids = list({m.opponent_id if m.user_id == current_user.id else m.user_id for m in matches})
         task_ids = list({m.task_id for m in matches})
         opponents_by_id = {u.id: u for u in User.query.filter(User.id.in_(opponent_ids)).all()} if opponent_ids else {}
@@ -357,9 +351,8 @@ def duel_arena(match_id):
         now_utc = datetime.now(timezone.utc)
         elapsed_time = int((now_utc - started_at).total_seconds()) if started_at else 0
         time_remaining = max(0, 7200 - elapsed_time)
-        is_premium = getattr(current_user, 'has_premium', lambda: False)() if current_user.is_authenticated else False
         return render_template('arena.html', task=task, opponent=opponent, current_user=current_user,
-                               match=match, time_remaining=time_remaining, is_premium=is_premium)
+                               match=match, time_remaining=time_remaining)
     except Exception as e:
         print(f"Ошибка при загрузке страницы дуэли: {e}")
         return redirect(url_for('match.matchmaking_page'))
@@ -399,10 +392,6 @@ def get_duel_status(match_id):
                 }
             }
         }
-        if hasattr(current_user, 'has_premium') and current_user.has_premium() and opponent_result and opponent_result.attempt_id:
-            opp_attempt = db.session.get(Attempt, opponent_result.attempt_id)
-            if opp_attempt:
-                response_data['opponent_code'] = opp_attempt.code
         if match.result is None and match.started_at:
             started_at = to_utc_aware(match.started_at)
             now_utc = datetime.now(timezone.utc)

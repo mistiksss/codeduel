@@ -24,19 +24,15 @@ def validate_solution(task_id, code, language):
     results = []
     tests_passed = 0
     total_execution_time = 0.0
-    max_memory_used = 0
     for test_case in test_cases:
         result = run_code(code, test_case.input_data, task.time_limit, language)
         exec_time = float(result.get('time') or 0)
-        mem_used = int(result.get('memory') or 0)
         total_execution_time += exec_time
-        max_memory_used = max(max_memory_used, mem_used)
         test_result = {
             'test_id': test_case.id,
             'status': result.get('status', 'system_error'),
             'passed': False,
             'execution_time': exec_time,
-            'memory_used': mem_used,
             'error': (result.get('error') or '')[:200],
         }
         if result.get('success'):
@@ -70,7 +66,6 @@ def validate_solution(task_id, code, language):
         'total_tests': total_tests,
         'pass_ratio': pass_ratio,
         'execution_time': avg_execution_time,
-        'memory_used': max_memory_used,
         'results': results,
     }
 

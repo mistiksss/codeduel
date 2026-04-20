@@ -1,7 +1,6 @@
 """Match lifecycle and result logic."""
 from datetime import datetime, timezone, timedelta
 
-import math
 from sqlalchemy import or_
 
 from extensions import db
@@ -65,7 +64,7 @@ def _apply_match_result(match: Match, result: str):
     if result == 'win':
         new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 1)
         user.wins += 1
-        user.current_streak = getattr(user, 'current_streak', 0) + 1
+        user.current_streak += 1
         opp.losses += 1
         opp.current_streak = 0
     elif result == 'loss':
@@ -73,7 +72,7 @@ def _apply_match_result(match: Match, result: str):
         user.losses += 1
         user.current_streak = 0
         opp.wins += 1
-        opp.current_streak = getattr(opp, 'current_streak', 0) + 1
+        opp.current_streak += 1
     else:
         new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 0.5)
         user.draws += 1

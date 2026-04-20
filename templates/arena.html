@@ -7,9 +7,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='arena.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='premium.css') }}">
 </head>
-<body>
+<body data-arena-task-id="{{ task.id }}"
+      data-arena-time-limit="{{ task.time_limit }}"
+      data-arena-memory-limit="{{ task.memory_limit }}"
+      data-arena-task-points="{{ task.points if task.points else 100 }}"
+      data-arena-user-elo="{{ current_user.elo|default(1000)|int }}"
+      data-arena-match-id="{{ match.id if match else '' }}"
+      data-arena-match-exists="{{ '1' if match else '0' }}">
     {% if active_match_id %}{% set header_extra = '<button type="button" class="btn btn_surrender" id="surrenderBtn">Сдаться</button>' %}{% endif %}
     {% include 'includes/header.html' %}
 
@@ -39,22 +44,24 @@
 
                     <h3 class="problem_title_another">Примеры</h3>
                     <div class="examples_container">
-                        {% if task.example and task.answer %}
+                        {% for test in task.test_cases %}
+                            {% if not test.is_hidden %}
                             <div class="example_pair">
                                 <div class="example_section">
-                                    <div class="example_header">Ввод #1</div>
-                                    <div class="example_content copyable" data-content="{{ task.example }}">
-                                        {{ task.example|safe_html }}
+                                    <div class="example_header">Ввод #{{ loop.index }}</div>
+                                    <div class="example_content copyable" data-content="{{ test.input_data }}">
+                                        {{ test.input_data }}
                                     </div>
                                 </div>
                                 <div class="example_section">
-                                    <div class="example_header">Вывод #1</div>
-                                    <div class="example_content copyable" data-content="{{ task.answer }}">
-                                        {{ task.answer|safe_html }}
+                                    <div class="example_header">Вывод #{{ loop.index }}</div>
+                                    <div class="example_content copyable" data-content="{{ test.expected_output }}">
+                                        {{ test.expected_output }}
                                     </div>
                                 </div>
                             </div>
-                        {% endif %}
+                            {% endif %}
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -115,7 +122,6 @@
                 </div>
             </div>
 
-            <!-- Блок матча показываем ТОЛЬКО в дуэли -->
             {% if match %}
             <div class="match_info">
                 <div class="match_info_content">
@@ -170,12 +176,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://unpkg.com/monaco-editor@0.33.0/min/vs/loader.js"></script>
     <script>
-    window.__USER_ELO = {{ current_user.elo|default(1000)|int }};
-    window.__IS_PREMIUM = {{ 'true' if is_premium|default(false) else 'false' }};
-    const socket = io();
-    const ARENA_MATCH_ID = {{ match.id if match else 'null' }};
-    let currentMatchId = ARENA_MATCH_ID || null;
-    let joinedRoomId = null;
+    // Read all template values from data attributes on body
+    var _t = {
+        taskId: parseInt(document.body.getAttribute('data-arena-task-id') || '0'),
+        timeLimit: parseFloat(document.body.getAttribute('data-arena-time-limit') || '1'),
+        memoryLimit: parseFloat(document.body.getAttribute('data-arena-memory-limit') || '256'),
+        taskPoints: parseInt(document.body.getAttribute('data-arena-task-points') || '100'),
+        userElo: parseInt(document.body.getAttribute('data-arena-user-elo') || '1000'),
+        matchId: document.body.getAttribute('data-arena-match-id') || null,
+        matchExists: document.body.getAttribute('data-arena-match-exists') === '1'
+    };
+    if (_t.matchId === '') { _t.matchId = null; }
+    window.__USER_ELO = _t.userElo;
+    var socket = io();
+    var ARENA_MATCH_ID = _t.matchId;
+    var currentMatchId = ARENA_MATCH_ID || null;
+    var joinedRoomId = null;
 
     socket.on('disconnect', function() {
         var banner = document.getElementById('connectionLostBanner');
@@ -187,17 +203,11 @@
         if (currentMatchId) socket.emit('join', { room: currentMatchId });
     });
 
-    require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.33.0/min/vs' }});
+    require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.33.0/min/vs' } });
 
     require(['vs/editor/editor.main'], function() {
         var editor = monaco.editor.create(document.getElementById('codeEditor'), {
-            value: `def main():
-        # Введите ваш код здесь
-        n = int(input())
-        print(n * 2)
-
-    if __name__ == "__main__":
-        main()`,
+            value: 'def main():\\n    # \\u0412\\u0432\\u0435\\u0434\\u0438\\u0442\\u0435 \\u0432\\u0430\\u0448 \\u043a\\u043e\\u0434 \\u0437\\u0434\\u0435\\u0441\\u044c\\n    n = int(input())\\n    print(n * 2)\\n\\nif __name__ == "__main__":\\n    main()',
             language: 'python',
             theme: 'vs-dark',
             fontSize: 16,
@@ -207,7 +217,7 @@
             automaticLayout: true
         });
 
-        let typingDebounce = null;
+        var typingDebounce = null;
         function emitTyping() {
             if (currentMatchId && socket) {
                 socket.emit('typing', { room: currentMatchId });
@@ -218,70 +228,62 @@
             typingDebounce = setTimeout(emitTyping, 500);
         });
 
-        resultShown = false;
-        let typingTimeout = null;
+        var resultShown = false;
+        var typingTimeout = null;
 
         function humanizeResult(resultForUser) {
-            if (resultForUser === 'win') return 'ПОБЕДА';
-            if (resultForUser === 'loss') return 'ПОРАЖЕНИЕ';
-            if (resultForUser === 'draw') return 'НИЧЬЯ';
-            return 'Завершён';
+            if (resultForUser === 'win') return '\\u041F\\u041E\\u0411\\u0415\\u0414\\u0410';
+            if (resultForUser === 'loss') return '\\u041F\\u041E\\u0420\\u0410\\u0416\\u0415\\u041D\\u0418\\u0415';
+            if (resultForUser === 'draw') return '\\u041D\\u0418\\u0427\\u042C\\u042F';
+            return '\\u0417\\u0430\\u0432\\u0435\\u0440\\u0448\\u0451\\u043d';
         }
 
         function showMatchResultModal(matchStatus, onClose) {
             if (resultShown) return;
             resultShown = true;
 
-            const overlay = document.getElementById('resultOverlay');
-            const titleEl = document.getElementById('resultTitle');
-            const bodyEl = document.getElementById('resultBody');
-            const closeBtn = document.getElementById('resultCloseBtn');
+            var overlay = document.getElementById('resultOverlay');
+            var titleEl = document.getElementById('resultTitle');
+            var bodyEl = document.getElementById('resultBody');
+            var closeBtn = document.getElementById('resultCloseBtn');
             if (!overlay || !titleEl || !bodyEl) return;
 
-            const resultForUser = matchStatus.result_for_user || matchStatus.result;
-            const title = humanizeResult(resultForUser);
+            var resultForUser = matchStatus.result_for_user || matchStatus.result;
+            var title = humanizeResult(resultForUser);
             titleEl.textContent = title;
 
-            const myPassed = (matchStatus.tests_passed_for_user ?? 0) || 0;
-            const myTotal = (matchStatus.total_tests_for_user ?? 0) || 0;
-            const oppPassed = (matchStatus.tests_passed_for_opponent ?? 0) || 0;
-            const oppTotal = (matchStatus.total_tests_for_opponent ?? 0) || 0;
+            var myPassed = (matchStatus.tests_passed_for_user || 0);
+            var myTotal = (matchStatus.total_tests_for_user || 0);
+            var oppPassed = (matchStatus.tests_passed_for_opponent || 0);
+            var oppTotal = (matchStatus.total_tests_for_opponent || 0);
 
-            const myChange = matchStatus.rating_change_for_user;
+            var myChange = matchStatus.rating_change_for_user;
+            var myChangeNum = typeof myChange === 'number' ? myChange : 0;
+            var myChangeText = myChangeNum >= 0 ? '+' + myChangeNum : '' + myChangeNum;
 
-            const myChangeText = (typeof myChange === 'number') ? (myChange >= 0 ? `+${myChange}` : `${myChange}`) : '0';
-
-            bodyEl.innerHTML = `
-                <div class="result_modal_stats_row">
-                    Пройдено тестов: <b>${myPassed}/${myTotal}</b><br/>
-                    Пройдено тестов соперника: <b>${oppPassed}/${oppTotal}</b>
-                </div>
-                <div class="result_modal_rating_row">
-                    Изменение рейтинга: <b>${myChangeText}</b><br/>
-                </div>
-            `;
+            bodyEl.innerHTML = '<div class="result_modal_stats_row">\\u041F\\u0440\\u043e\\u0439\\u0434\\u0435\\u043d\\u043e \\u0442\\u0435\\u0441\\u0442\\u043e\\u0432: <b>' + myPassed + '/' + myTotal + '</b><br/>\\u041F\\u0440\\u043e\\u0439\\u0434\\u0435\\u043d\\u043e \\u0442\\u0435\\u0441\\u0442\\u043e\\u0432 \\u0441\\u043e\\u043f\\u0435\\u0440\\u043d\\u0438\\u043a\\u0430: <b>' + oppPassed + '/' + oppTotal + '</b></div><div class="result_modal_rating_row">\\u0418\\u0437\\u043c\\u0435\\u043d\\u0435\\u043d\\u0438\\u0435 \\u0440\\u0435\\u0439\\u0442\\u0438\\u043d\\u0433\\u0430: <b>' + myChangeText + '</b><br/></div>';
 
             var oppCodeEl = document.getElementById('resultOpponentCode');
-            var bodyEl2 = document.getElementById('resultBody');
             var oppCode = matchStatus.opponent_code;
-            var canViewCode = matchStatus.opponent_code !== undefined && matchStatus.opponent_code !== null;
+            var canViewCode = oppCode !== undefined && oppCode !== null;
             if (oppCodeEl) {
                 if (canViewCode) {
-                    oppCodeEl.innerHTML = '<pre class="opponent_code_pre">' + escapeHtml(String(oppCode || '')) + '</pre>';
+                    var escapedCode = escapeHtml(String(oppCode || ''));
+                    oppCodeEl.innerHTML = '<pre class="opponent_code_pre">' + escapedCode + '</pre>';
                 } else {
-                    oppCodeEl.innerHTML = '<div class="opponent_code_locked"><span class="locked_icon">🔒</span><p>Код соперника доступен в Pro</p><a href="/pricing" class="result_btn result_btn_unlock">Разблокировать решение (Купить Pro)</a></div>';
+                    oppCodeEl.innerHTML = '<div class="opponent_code_locked"><span class="locked_icon">&#128274;</span><p>\\u041a\\u043e\\u0434 \\u0441\\u043e\\u043f\\u0435\\u0440\\u043d\\u0438\\u043a\\u0430 \\u0434\\u043e\\u0441\\u0442\\u0443\\u043f\\u0435\\u043d \\u0432 Pro</p><a href="/pricing" class="result_btn result_btn_unlock">\\u0420\\u0430\\u0437\\u0431\\u043b\\u043e\\u043a\\u0438\\u0440\\u043e\\u0432\\u0430\\u0442\\u044c \\u0440\\u0435\\u0448\\u0435\\u043d\\u0438\\u0435 (\\u041a\\u0443\\u043f\\u0438\\u0442\\u044c Pro)</a></div>';
                 }
             }
 
             var tabs = document.querySelectorAll('.result_tab');
-            var bodyWrap = bodyEl2 && bodyEl2.parentElement;
+            var bodyWrap = bodyEl && bodyEl.parentElement;
             if (tabs.length >= 2) {
                 tabs.forEach(function(t) {
                     t.onclick = function() {
                         var tab = t.getAttribute('data-tab');
                         tabs.forEach(function(x) { x.classList.remove('result_tab_active'); });
                         t.classList.add('result_tab_active');
-                        if (bodyEl2) bodyEl2.style.display = (tab === 'summary') ? 'block' : 'none';
+                        if (bodyEl) bodyEl.style.display = (tab === 'summary') ? 'block' : 'none';
                         if (oppCodeEl) oppCodeEl.style.display = (tab === 'opponent_code') ? 'block' : 'none';
                     };
                 });
@@ -292,112 +294,86 @@
             var shareBtn = document.getElementById('resultShareBtn');
             if (shareBtn) shareBtn.remove();
             if (resultForUser === 'win' && actionsEl) {
-                var newElo = (window.__USER_ELO || 1000) + (typeof myChange === 'number' ? myChange : 0);
+                var newElo = (window.__USER_ELO || 1000) + (typeof myChangeNum === 'number' ? myChangeNum : 0);
                 var shareUrl = window.location.origin + '/';
-                var shareText = 'Я победил в дуэли на CodeDuel! Мой рейтинг: ' + newElo + '. Попробуй и ты: ' + shareUrl;
+                var shareText = '\\u042F \\u043f\\u043e\\u0431\\u0435\\u0434\\u0438\\u043b \\u0432 \\u0434\\u0443\\u044d\\u043b\\u0438 \\u043d\\u0430 CodeDuel! \\u041c\\u043e\\u0439 \\u0440\\u0435\\u0439\\u0442\\u0438\\u043d\\u0433: ' + newElo + '. \\u041f\\u043e\\u043f\\u0440\\u043e\\u0431\\u0443\\u0439 \\u0438 \\u0442\\u044b: ' + shareUrl;
                 var btn = document.createElement('button');
                 btn.className = 'result_btn';
                 btn.id = 'resultShareBtn';
                 btn.type = 'button';
-                btn.textContent = 'Поделиться победой';
+                btn.textContent = '\\u041F\\u043e\\u0434\\u0435\\u043b\\u0438\\u0442\\u044c\\u0441\\u044f \\u043f\\u043e\\u0431\\u0435\\u0434\\u043e\\u0439';
                 btn.onclick = function() {
                     navigator.clipboard.writeText(shareText).then(function() {
-                        btn.textContent = 'Скопировано!';
-                        setTimeout(function() { btn.textContent = 'Поделиться победой'; }, 2000);
+                        btn.textContent = '\\u0421\\u043a\\u043e\\u043f\\u0438\\u0440\\u043e\\u0432\\u0430\\u043d\\u043e!';
+                        setTimeout(function() { btn.textContent = '\\u041F\\u043e\\u0434\\u0435\\u043b\\u0438\\u0442\\u044c\\u0441\\u044f \\u043f\\u043e\\u0431\\u0435\\u0434\\u043e\\u0439'; }, 2000);
                     }).catch(function() {
-                        btn.textContent = 'Ошибка копирования';
+                        btn.textContent = '\\u041E\\u0448\\u0438\\u0431\\u043a\\u0430 \\u043a\\u043e\\u043f\\u0438\\u0440\\u043e\\u0432\\u0430\\u043d\\u0438\\u044f';
                     });
                 };
                 actionsEl.insertBefore(btn, actionsEl.firstChild);
             }
 
             overlay.style.display = 'flex';
-            const close = () => {
+            var close = function() {
                 overlay.style.display = 'none';
                 if (typeof onClose === 'function') onClose();
             };
             if (closeBtn) closeBtn.onclick = close;
-            overlay.onclick = (e) => {
+            overlay.onclick = function(e) {
                 if (e.target === overlay) close();
             };
         }
 
-
         async function loadAttemptsHistory() {
             try {
-                const response = await fetch(`/api/tasks/{{ task.id }}/attempts`, {
+                var response = await fetch('/api/tasks/' + _t.taskId + '/attempts', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
 
                 if (response.ok) {
-                    const attempts = await response.json();
+                    var attempts = await response.json();
                     displayAttempts(attempts);
                 } else {
-                    document.getElementById('attemptsContainer').innerHTML =
-                        '<div class="no_attempts">Ошибка загрузки истории</div>';
+                    document.getElementById('attemptsContainer').innerHTML = '<div class="no_attempts">\\u041E\\u0448\\u0438\\u0431\\u043a\\u0430 \\u0437\\u0430\\u0433\\u0440\\u0443\\u0437\\u043a\\u0438 \\u0438\\u0441\\u0442\\u043e\\u0440\\u0438\\u0438</div>';
                 }
             } catch (error) {
-                document.getElementById('attemptsContainer').innerHTML =
-                    '<div class="no_attempts">Ошибка загрузки истории</div>';
+                document.getElementById('attemptsContainer').innerHTML = '<div class="no_attempts">\\u041E\\u0448\\u0438\\u0431\\u043a\\u0430 \\u0437\\u0430\\u0433\\u0440\\u0443\\u0437\\u043a\\u0438 \\u0438\\u0441\\u0442\\u043e\\u0440\\u0438\\u0438</div>';
             }
         }
 
         function displayAttempts(attempts) {
-            const container = document.getElementById('attemptsContainer');
+            var container = document.getElementById('attemptsContainer');
 
             if (!attempts || attempts.length === 0) {
-                container.innerHTML = '<div class="no_attempts">Пока нет отправленных решений</div>';
+                container.innerHTML = '<div class="no_attempts">\\u041F\\u043e\\u043a \\u043d\\u0435\\u0442 \\u043e\\u0442\\u043f\\u0440\\u0430\\u0432\\u043b\\u0435\\u043d\\u043d\\u044b\\u0445 \\u0440\\u0435\\u0448\\u0435\\u043d\\u0438\\u0439</div>';
                 return;
             }
 
-            let html = '';
-            attempts.forEach(attempt => {
-                const statusClass = getStatusClass(attempt.status);
-                const statusText = getStatusText(attempt.status);
-                const date = new Date(attempt.submitted_at).toLocaleString('ru-RU');
+            var html = '';
+            attempts.forEach(function(attempt) {
+                var statusClass = getStatusClass(attempt.status);
+                var statusText = getStatusText(attempt.status);
+                var date = new Date(attempt.submitted_at).toLocaleString('ru-RU');
 
-                const testsInfo = attempt.tests_passed !== null && attempt.total_tests !== null
-                    ? `${attempt.tests_passed}/${attempt.total_tests}`
+                var testsInfo = attempt.tests_passed !== null && attempt.total_tests !== null
+                    ? attempt.tests_passed + '/' + attempt.total_tests
                     : '-';
 
-                const execTime = attempt.execution_time ? `${attempt.execution_time.toFixed(3)} сек` : '-';
+                var execTime = attempt.execution_time ? attempt.execution_time.toFixed(3) + ' \\u0441\\u0435\\u043a' : '-';
 
-                html += `
-                    <div class="attempt_item">
-                        <div class="attempt_main">
-                            <div class="attempt_date">${date}</div>
-                            <div class="attempt_status ${statusClass}">${statusText}</div>
-                        </div>
-                        <div class="attempt_details">
-                            <div class="attempt_detail">
-                                <span class="detail_label">Язык:</span>
-                                <span class="detail_value">${attempt.language}</span>
-                            </div>
-                            <div class="attempt_detail">
-                                <span class="detail_label">Время:</span>
-                                <span class="detail_value">${execTime}</span>
-                            </div>
-                            <div class="attempt_detail">
-                                <span class="detail_label">Тесты:</span>
-                                <span class="detail_value">${testsInfo}</span>
-                            </div>
-                            ${attempt.score !== null ? `
-                            <div class="attempt_detail">
-                                <span class="detail_label">Баллы:</span>
-                                <span class="detail_value">${attempt.score}</span>
-                            </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
+                html += '<div class="attempt_item"><div class="attempt_main"><div class="attempt_date">' + date + '</div><div class="attempt_status ' + statusClass + '">' + statusText + '</div></div><div class="attempt_details"><div class="attempt_detail"><span class="detail_label">\\u042F\\u0437\\u044B\\u043A:</span><span class="detail_value">' + attempt.language + '</span></div><div class="attempt_detail"><span class="detail_label">\\u0412\\u0440\\u0435\\u043C\\u044F:</span><span class="detail_value">' + execTime + '</span></div><div class="attempt_detail"><span class="detail_label">\\u0422\\u0435\\u0441\\u0442\\u044B:</span><span class="detail_value">' + testsInfo + '</span></div>';
+                if (attempt.score !== null) {
+                    html += '<div class="attempt_detail"><span class="detail_label">\\u0411\\u0430\\u043B\\u043B\\u044B:</span><span class="detail_value">' + attempt.score + '</span></div>';
+                }
+                html += '</div></div>';
             });
 
             container.innerHTML = html;
         }
 
         function getStatusClass(status) {
-            const statusMap = {
+            var statusMap = {
                 'accepted': 'success',
                 'partially_correct': 'warning',
                 'wrong_answer': 'error',
@@ -411,19 +387,18 @@
         }
 
         function getStatusText(status) {
-            const statusMap = {
-                'accepted': 'Принято',
-                'partially_correct': 'Частично верно',
-                'wrong_answer': 'Неверный ответ',
-                'time_limit': 'Превышено время',
-                'runtime_error': 'Ошибка выполнения',
-                'compilation_error': 'Ошибка компиляции',
-                'pending': 'На проверке',
-                'testing': 'Тестируется'
+            var statusMap = {
+                'accepted': '\\u041F\\u0440\\u0438\\u043D\\u044F\\u0442\\u043E',
+                'partially_correct': '\\u0427\\u0430\\u0441\\u0442\\u0438\\u0447\\u043D\\u043E \\u0432\\u0435\\u0440\\u043D\\u043E',
+                'wrong_answer': '\\u041D\\u0435\\u0432\\u0435\\u0440\\u043D\\u044B\\u0439 \\u043E\\u0442\\u0432\\u0435\\u0442',
+                'time_limit': '\\u041F\\u0440\\u0435\\u0432\\u044B\\u0448\\u0435\\u043D\\u043E \\u0432\\u0440\\u0435\\u043C\\u044F',
+                'runtime_error': '\\u041E\\u0448\\u0438\\u0431\\u043A\\u0430 \\u0432\\u044B\\u043F\\u043E\\u043B\\u043D\\u0435\\u043D\\u0438\\u044F',
+                'compilation_error': '\\u041E\\u0448\\u0438\\u0431\\u043A\\u0430 \\u043A\\u043E\\u043C\\u043F\\u0438\\u043B\\u044F\\u0446\\u0438\\u0438',
+                'pending': '\\u041D\\u0430 \\u043F\\u0440\\u043E\\u0432\\u0435\\u0440\\u043A\\u0435',
+                'testing': '\\u0422\\u0435\\u0441\\u0442\\u0438\\u0440\\u0443\\u0435\\u0442\\u0441\\u044F'
             };
-            return statusMap[status] || 'Неизвестно';
+            return statusMap[status] || '\\u041D\\u0435\\u0438\\u0437\\u0432\\u0435\\u0441\\u0442\\u043D\\u043E';
         }
-
 
         function joinMatchRoom(matchId) {
             if (!matchId || !socket || joinedRoomId === matchId) return;
@@ -438,7 +413,7 @@
                 var el = document.getElementById('opponentTyping');
                 var textEl = document.getElementById('opponentStatusText');
                 if (el && textEl) {
-                    textEl.textContent = 'Соперник пишет код';
+                    textEl.textContent = '\\u0421\\u043E\\u043F\\u0435\\u0440\\u043D\\u0438\\u043A \\u043F\\u0438\\u0448\\u0435\\u0442 \\u043A\\u043E\\u0434';
                     el.style.display = 'block';
                     if (typingTimeout) clearTimeout(typingTimeout);
                     typingTimeout = setTimeout(function() {
@@ -450,7 +425,7 @@
                 var el = document.getElementById('opponentTyping');
                 var textEl = document.getElementById('opponentStatusText');
                 if (el && textEl) {
-                    textEl.textContent = 'Соперник тестирует решение';
+                    textEl.textContent = '\\u0421\\u043E\\u043F\\u0435\\u0440\\u043D\\u0438\\u043A \\u0442\\u0435\\u0441\\u0442\\u0438\\u0440\\u0443\\u0435\\u0442 \\u0440\\u0435\\u0448\\u0435\\u043D\\u0438\\u0435';
                     el.style.display = 'block';
                     if (typingTimeout) clearTimeout(typingTimeout);
                 }
@@ -461,28 +436,28 @@
         }
 
         async function checkActiveMatch() {
-            const statusEl = document.getElementById('currentMatchStatus');
+            var statusEl = document.getElementById('currentMatchStatus');
             if (!statusEl) return;
-            {% if match %}
-            currentMatchId = {{ match.id }};
-            statusEl.textContent = 'Матч активен';
-            statusEl.className = 'match_status_value active';
-            joinMatchRoom(currentMatchId);
-            setTimeout(updateOpponentInfo, 300);
-            return;
-            {% endif %}
+            if (_t.matchExists) {
+                currentMatchId = _t.matchId;
+                statusEl.textContent = '\\u041C\\u0430\\u0442\\u0447 \\u0430\\u043A\\u0442\\u0438\\u0432\\u0435\\u043D';
+                statusEl.className = 'match_status_value active';
+                joinMatchRoom(currentMatchId);
+                setTimeout(updateOpponentInfo, 300);
+                return;
+            }
 
             try {
-                const response = await fetch(`/api/match/active`, {
+                var response = await fetch('/api/match/active', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
 
-                const data = await response.json();
+                var data = await response.json();
 
                 if (response.ok && data.match_id) {
                     currentMatchId = data.match_id;
-                    statusEl.textContent = 'Матч активен';
+                    statusEl.textContent = '\\u041C\\u0430\\u0442\\u0447 \\u0430\\u043A\\u0442\\u0438\\u0432\\u0435\\u043D';
                     statusEl.className = 'match_status_value active';
                     joinMatchRoom(currentMatchId);
                     setTimeout(updateOpponentInfo, 500);
@@ -494,43 +469,41 @@
         async function updateOpponentInfo() {
             if (!currentMatchId) return;
 
-            const nameEl = document.getElementById('opponentName');
-            const eloEl = document.getElementById('opponentElo');
-            const scoreEl = document.getElementById('opponentScore');
-            const statusEl = document.getElementById('currentMatchStatus');
+            var nameEl = document.getElementById('opponentName');
+            var eloEl = document.getElementById('opponentElo');
+            var scoreEl = document.getElementById('opponentScore');
+            var statusEl = document.getElementById('currentMatchStatus');
             if (!nameEl || !eloEl || !scoreEl || !statusEl) return;
 
             try {
-                const response = await fetch(`/api/match/${currentMatchId}/opponent_info`, {
+                var response = await fetch('/api/match/' + currentMatchId + '/opponent_info', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
 
                 if (response.ok) {
-                    const opponentInfo = await response.json();
+                    var opponentInfo = await response.json();
 
                     nameEl.textContent = opponentInfo.username;
                     eloEl.textContent = opponentInfo.elo;
-                    scoreEl.textContent = `${opponentInfo.score}/{{ task.points if task.points else "100" }}`;
+                    scoreEl.textContent = opponentInfo.score + '/' + _t.taskPoints;
 
-                    const statusResponse = await fetch(`/api/match/${currentMatchId}/status`, {
+                    var statusResponse = await fetch('/api/match/' + currentMatchId + '/status', {
                         method: 'GET',
                         headers: { 'Content-Type': 'application/json' }
                     });
 
                     if (statusResponse.ok) {
-                        const matchStatus = await statusResponse.json();
+                        var matchStatus = await statusResponse.json();
 
                         if (matchStatus.result) {
-                            const resultForUser = matchStatus.result_for_user || matchStatus.result;
-                            statusEl.textContent =
-                                `Матч завершен: ${humanizeResult(resultForUser)}`;
+                            var resultForUser = matchStatus.result_for_user || matchStatus.result;
+                            statusEl.textContent = '\\u041C\\u0430\\u0442\\u0447 \\u0437\\u0430\\u0432\\u0435\\u0440\\u0448\\u0435\\u043D: ' + humanizeResult(resultForUser);
 
                             if (resultForUser === 'win') statusEl.className = 'match_status_value win';
                             else if (resultForUser === 'loss') statusEl.className = 'match_status_value lose';
                             else statusEl.className = 'match_status_value draw';
 
-                            // Всплывающее окно с итогом матча
                             showMatchResultModal(matchStatus);
                             stopOpponentTracking();
                         }
@@ -546,146 +519,121 @@
             }
         }
 
-
         async function runCode() {
-            const code = editor.getValue();
-            const inputData = document.getElementById('inputData').value;
-            const language = document.getElementById('languageSelector').value;
+            var code = editor.getValue();
+            var inputData = document.getElementById('inputData').value;
+            var language = document.getElementById('languageSelector').value;
 
-            document.querySelectorAll('.data_tab').forEach(t => t.classList.remove('data_tab_active'));
-            document.querySelectorAll('.data_content').forEach(c => c.classList.remove('data_content_active'));
+            document.querySelectorAll('.data_tab').forEach(function(t) { t.classList.remove('data_tab_active'); });
+            document.querySelectorAll('.data_content').forEach(function(c) { c.classList.remove('data_content_active'); });
             document.querySelector('[data-tab="execution"]').classList.add('data_tab_active');
             document.getElementById('executionContent').classList.add('data_content_active');
 
-            document.getElementById('executionResult').textContent = 'Выполнение...';
+            document.getElementById('executionResult').textContent = '\\u0412\\u044B\\u043F\\u043E\\u043B\\u043D\\u0435\\u043D\\u0438\\u0435...';
             document.getElementById('executionError').textContent = '';
             document.querySelector('.error_label').style.display = 'none';
 
             try {
-                const response = await fetch('/api/run', {
+                var response = await fetch('/api/run', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         code: code,
                         input_data: inputData,
                         language: language,
-                        time_limit: {{ task.time_limit }},
-                        memory_limit: {{ task.memory_limit }}
+                        time_limit: _t.timeLimit,
+                        memory_limit: _t.memoryLimit
                     })
                 });
 
-                const result = await response.json();
+                var runResult = await response.json();
 
-                if (result.success) {
-                    document.getElementById('executionResult').textContent = result.output || '(пустой вывод)';
+                if (runResult.success) {
+                    document.getElementById('executionResult').textContent = runResult.output || '(\\u043F\\u0443\\u0441\\u0442\\u043E\\u0439 \\u0432\\u044B\\u0432\\u043E\\u0434)';
                 } else {
                     document.getElementById('executionResult').textContent = '';
-                    document.getElementById('executionError').textContent = result.error || '';
-                    document.querySelector('.error_label').style.display = result.error ? 'block' : 'none';
+                    document.getElementById('executionError').textContent = runResult.error || '';
+                    document.querySelector('.error_label').style.display = runResult.error ? 'block' : 'none';
                 }
             } catch (e) {}
         }
 
         async function submitSolution() {
-            const code = editor.getValue();
-            const language = document.getElementById('languageSelector').value;
+            var code = editor.getValue();
+            var language = document.getElementById('languageSelector').value;
 
-            document.querySelectorAll('.data_tab').forEach(t => t.classList.remove('data_tab_active'));
-            document.querySelectorAll('.data_content').forEach(c => c.classList.remove('data_content_active'));
+            document.querySelectorAll('.data_tab').forEach(function(t) { t.classList.remove('data_tab_active'); });
+            document.querySelectorAll('.data_content').forEach(function(c) { c.classList.remove('data_content_active'); });
             document.querySelector('[data-tab="testing"]').classList.add('data_tab_active');
             document.getElementById('testingContent').classList.add('data_content_active');
 
-            document.getElementById('testStats').innerHTML =
-                '<div class="stats_placeholder">Тестирование начато...</div>';
+            document.getElementById('testStats').innerHTML = '<div class="stats_placeholder">\\u0422\\u0435\\u0441\\u0442\\u0438\\u0440\\u043E\\u0432\\u0430\\u043D\\u0438\\u0435 \\u043D\\u0430\\u0447\\u0430\\u0442\\u043E...</div>';
 
             try {
-                const response = await fetch('/api/solutions/submit', {
+                var response = await fetch('/api/solutions/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        task_id: {{ task.id }},
+                        task_id: _t.taskId,
                         code: code,
                         language: language,
                         match_id: currentMatchId || null
                     })
                 });
 
-                const result = await response.json();
+                var submitResult = await response.json();
 
                 if (response.ok) {
-                    const maxScore = result.max_score || 0;
+                    var maxScore = submitResult.max_score || 0;
 
-                    document.getElementById('testStats').innerHTML = `
-                        <div class="stats_item">
-                            <span class="stats_label">Статус:</span>
-                            <span class="stats_value ${getStatusClass(result.status)}">${getStatusText(result.status)}</span>
-                        </div>
-                        <div class="stats_item">
-                            <span class="stats_label">Тестов пройдено:</span>
-                            <span class="stats_value">${result.tests_passed}/${result.total_tests}</span>
-                        </div>
-                        <div class="stats_item">
-                            <span class="stats_label">Баллы:</span>
-                            <span class="stats_value">${result.score}/${maxScore}</span>
-                        </div>
-                        <div class="stats_item">
-                            <span class="stats_label">Время:</span>
-                            <span class="stats_value">${result.execution_time ? result.execution_time.toFixed(3) : 0} сек</span>
-                        </div>
-                    `;
+                    document.getElementById('testStats').innerHTML = '<div class="stats_item"><span class="stats_label">\\u0421\\u0442\\u0430\\u0442\\u0443\\u0441:</span><span class="stats_value ' + getStatusClass(submitResult.status) + '">' + getStatusText(submitResult.status) + '</span></div><div class="stats_item"><span class="stats_label">\\u0422\\u0435\\u0441\\u0442\\u043E\\u0432 \\u043F\\u0440\\u043E\\u0439\\u0434\\u0435\\u043D\\u043E:</span><span class="stats_value">' + submitResult.tests_passed + '/' + submitResult.total_tests + '</span></div><div class="stats_item"><span class="stats_label">\\u0411\\u0430\\u043B\\u043B\\u044B:</span><span class="stats_value">' + submitResult.score + '/' + maxScore + '</span></div><div class="stats_item"><span class="stats_label">\\u0412\\u0440\\u0435\\u043C\\u044F:</span><span class="stats_value">' + (submitResult.execution_time ? submitResult.execution_time.toFixed(3) : 0) + ' \\u0441\\u0435\\u043A</span></div>';
 
                     setTimeout(loadAttemptsHistory, 1000);
-                    if (result.match_id) {
-                        currentMatchId = result.match_id;
+                    if (submitResult.match_id) {
+                        currentMatchId = submitResult.match_id;
                         joinMatchRoom(currentMatchId);
                         setTimeout(updateOpponentInfo, 500);
                     }
                 } else {
-                    document.getElementById('testStats').innerHTML =
-                        '<div class="stats_placeholder">Попробуйте ещё раз</div>';
+                    document.getElementById('testStats').innerHTML = '<div class="stats_placeholder">\\u041F\\u043E\\u043F\\u0440\\u043E\\u0431\\u0443\\u0439\\u0442\\u0435 \\u0435\\u0449\\u0451 \\u0440\\u0430\\u0437</div>';
                 }
             } catch (e) {
-                document.getElementById('testStats').innerHTML =
-                    '<div class="stats_placeholder">Попробуйте ещё раз</div>';
+                document.getElementById('testStats').innerHTML = '<div class="stats_placeholder">\\u041F\\u043E\\u043F\\u0440\\u043E\\u0431\\u0443\\u0439\\u0442\\u0435 \\u0435\\u0449\\u0451 \\u0440\\u0430\\u0437</div>';
             }
         }
 
         function cleanText(text) {
-            return text
-                .replace(/^\s+|\s+$/g, '')
-                .replace(/\n\s+/g, '\n')
-                .replace(/\s+/g, ' ')
-                .trim();
+            return text.replace(/^\s+|\s+$/g, '').replace(/\n\s+/g, '\n').replace(/\s+/g, ' ').trim();
         }
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText((text || '').trim()).then(function() {}, function() {});
         }
 
-        document.querySelectorAll('.copyable').forEach(element => {
-            const originalContent = element.getAttribute('data-content');
+        document.querySelectorAll('.copyable').forEach(function(element) {
+            var originalContent = element.getAttribute('data-content');
             element.textContent = cleanText(originalContent || '');
 
             element.addEventListener('click', function() {
-                const content = this.getAttribute('data-content') || '';
+                var content = this.getAttribute('data-content') || '';
                 copyToClipboard(content);
                 this.classList.add('copy-success');
-                setTimeout(() => this.classList.remove('copy-success'), 1000);
+                setTimeout(function() { element.classList.remove('copy-success'); }, 1000);
             });
         });
 
-        document.querySelectorAll('.problem_tab').forEach(tab => {
+        document.querySelectorAll('.problem_tab').forEach(function(tab) {
             tab.addEventListener('click', function() {
-                const tabId = this.getAttribute('data-tab');
+                var tabId = this.getAttribute('data-tab');
 
-                document.querySelectorAll('.problem_tab').forEach(t => t.classList.remove('problem_tab_active'));
-                document.querySelectorAll('.problem_content').forEach(c => {
+                document.querySelectorAll('.problem_tab').forEach(function(t) { t.classList.remove('problem_tab_active'); });
+                document.querySelectorAll('.problem_content').forEach(function(c) {
                     c.classList.remove('problem_content_active');
                     c.style.display = 'none';
                 });
 
                 this.classList.add('problem_tab_active');
-                const activeContent = document.getElementById(tabId + 'Content');
+                var activeContent = document.getElementById(tabId + 'Content');
                 activeContent.classList.add('problem_content_active');
                 activeContent.style.display = 'flex';
 
@@ -693,13 +641,12 @@
             });
         });
 
-        document.querySelectorAll('.data_tab').forEach(tab => {
+        document.querySelectorAll('.data_tab').forEach(function(tab) {
             tab.addEventListener('click', function() {
-                document.querySelectorAll('.data_tab').forEach(t => t.classList.remove('data_tab_active'));
-                document.querySelectorAll('.data_content').forEach(c => c.classList.remove('data_content_active'));
+                document.querySelectorAll('.data_tab').forEach(function(t) { t.classList.remove('data_tab_active'); });
+                document.querySelectorAll('.data_content').forEach(function(c) { c.classList.remove('data_content_active'); });
                 this.classList.add('data_tab_active');
-                document.getElementById(this.getAttribute('data-tab') + 'Content')
-                    .classList.add('data_content_active');
+                document.getElementById(this.getAttribute('data-tab') + 'Content').classList.add('data_content_active');
             });
         });
 
@@ -708,43 +655,44 @@
             var model = editor.getModel();
             monaco.editor.setModelLanguage(model, language);
 
-            var defaultCode = {
-                'python': 'def main():\n    # Ваш код здесь\n    n = int(input())\n    print(n * 2)\n\nif __name__ == "__main__":\n    main()',
-                'javascript': `const readline = require('readline');\n\nasync function main() {\n    const rl = readline.createInterface({\n        input: process.stdin,\n        output: process.stdout,\n        terminal: false\n    });\n    \n    const lines = [];\n    for await (const line of rl) {\n        lines.push(line);\n    }\n    \n    // Ваш код здесь\n    const n = parseInt(lines[0]);\n    console.log(n * 2);\n}\n\nif (require.main === module) {\n    main().catch(console.error);\n}`,
-                'cpp': '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Ваш код здесь\n    int n;\n    cin >> n;\n    cout << n * 2 << endl;\n    return 0;\n}',
-                'java': 'import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        // Ваш код здесь\n        int n = scanner.nextInt();\n        System.out.println(n * 2);\n        scanner.close();\n    }\n}'
-            };
+            var defaultCode = {};
+            defaultCode['python'] = 'def main():\\n    # \\u0412\\u0430\\u0448 \\u043A\\u043E\\u0434 \\u0437\\u0434\\u0435\\u0441\\u044C\\n    n = int(input())\\n    print(n * 2)\\n\\nif __name__ == "__main__":\\n    main()';
+            defaultCode['javascript'] = 'const readline = require(\'readline\');\\n\\nasync function main() {\\n    const rl = readline.createInterface({\\n        input: process.stdin,\\n        output: process.stdout,\\n        terminal: false\\n    });\\n    \\n    const lines = [];\\n    for await (const line of rl) {\\n        lines.push(line);\\n    }\\n    \\n    // \\u0412\\u0430\\u0448 \\u043A\\u043E\\u0434 \\u0437\\u0434\\u0435\\u0441\\u044C\\n    const n = parseInt(lines[0]);\\n    console.log(n * 2);\\n}\\n\\nif (require.main === module) {\\n    main().catch(console.error);\\n}';
+            defaultCode['cpp'] = '#include <iostream>\\nusing namespace std;\\n\\nint main() {\\n    // \\u0412\\u0430\\u0448 \\u043A\\u043E\\u0434 \\u0437\\u0434\\u0435\\u0441\\u044C\\n    int n;\\n    cin >> n;\\n    cout << n * 2 << endl;\\n    return 0;\\n}';
+            defaultCode['java'] = 'import java.util.Scanner;\\n\\npublic class Main {\\n    public static void main(String[] args) {\\n        Scanner scanner = new Scanner(System.in);\\n        // \\u0412\\u0430\\u0448 \\u043A\\u043E\\u0434 \\u0437\\u0434\\u0435\\u0441\\u044C\\n        int n = scanner.nextInt();\\n        System.out.println(n * 2);\\n        scanner.close();\\n    }\\n}';
 
             editor.setValue(defaultCode[language] || '');
         });
 
         document.getElementById('runCode').addEventListener('click', runCode);
         document.getElementById('submitSolution').addEventListener('click', submitSolution);
-        const findBtn = document.getElementById('findMatchBtn');
+        var findBtn = document.getElementById('findMatchBtn');
         if (findBtn) {
             findBtn.addEventListener('click', findMatch);
         }
-        const surrenderBtn = document.getElementById('surrenderBtn');
+        var surrenderBtn = document.getElementById('surrenderBtn');
         if (surrenderBtn) {
-            surrenderBtn.addEventListener('click', async () => {
-                if (!confirm('Точно хотите сдаться? Матч будет завершён.')) return;
-                try {
-                    const resp = await fetch('/api/match/forfeit', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({})
-                    });
-                    const data = await resp.json();
-                    if (!resp.ok) return;
-                    showMatchResultModal(data, () => {
-                        window.location.href = '/profile';
-                    });
-                } catch (e) {}
+            surrenderBtn.addEventListener('click', function() {
+                if (!confirm('\\u0422\\u043E\\u0447\\u043D\\u043E \\u0445\\u043E\\u0442\\u0438\\u0442\\u0435 \\u0441\\u0434\\u0430\\u0442\\u044C\\u0441\\u044F? \\u041C\\u0430\\u0442\\u0447 \\u0431\\u0443\\u0434\\u0435\\u0442 \\u0437\\u0430\\u0432\\u0435\\u0440\\u0448\\u0451\\u043D.')) return;
+                (async function() {
+                    try {
+                        var resp = await fetch('/api/match/forfeit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({})
+                        });
+                        var data = await resp.json();
+                        if (!resp.ok) return;
+                        showMatchResultModal(data, function() {
+                            window.location.href = '/profile';
+                        });
+                    } catch (e) {}
+                })();
             });
         }
 
         checkActiveMatch();
-        const attemptsContent = document.getElementById('attemptsContent');
+        var attemptsContent = document.getElementById('attemptsContent');
         if (attemptsContent && attemptsContent.classList.contains('problem_content_active')) {
             loadAttemptsHistory();
         }

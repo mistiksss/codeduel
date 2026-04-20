@@ -16,7 +16,6 @@
     <div class="header_right">
         <a href="{{ url_for('main_reg') if current_user.is_authenticated else url_for('main') }}" class="header_link {{ 'header_link_active' if active_page == 'main' else '' }}">Главная</a>
         <a href="{{ url_for('tasks') }}" class="header_link {{ 'header_link_active' if active_page == 'tasks' else '' }}">Задачи</a>
-        <a href="{{ url_for('payment.pricing') }}" class="header_link header_link_premium {{ 'header_link_active' if active_page == 'premium' else '' }}">Premium</a>
         <a href="{{ url_for('leaderboard') }}" class="header_link {{ 'header_link_active' if active_page == 'leaderboard' else '' }}">Таблица лидеров</a>
         <a href="{{ url_for('about_reg') if current_user.is_authenticated else url_for('about') }}" class="header_link {{ 'header_link_active' if active_page == 'about' else '' }}">О нас</a>
         {% if header_extra %}

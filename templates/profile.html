@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='profile.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='premium.css') }}">
 </head>
 <body>
     {% include 'includes/header.html' %}
@@ -15,9 +14,9 @@
     <main>
         <div class="container">
             <div class="profile_header">
-                <div class="avatar{% if is_premium %} avatar_pro{% endif %}"></div>
+                <div class="avatar"></div>
                 <div class="profile_info">
-                    <h1 class="username">{{ profile_user.username }}{% if is_premium %} <span class="pro_badge pro_badge_inline">👑 PRO</span>{% endif %}</h1>
+                    <h1 class="username">{{ profile_user.username }}</h1>
                     {% if badges %}
                         <div class="profile_badges">
                             {% for name, desc in badges %}
@@ -96,13 +95,6 @@
                             <span class="match_row_date">{{ m.date }}</span>
                         </div>
                     {% endfor %}
-                    {% if not is_premium %}
-                        {% for _ in range(3) %}
-                        <div class="blur_placeholder">
-                            🔒 Доступно в Pro <a href="{{ url_for('payment.pricing') }}">Купить Pro</a>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
                 {% else %}
                     <p class="match_history_empty">Пока нет завершённых матчей.</p>
                 {% endif %}
