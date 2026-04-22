@@ -1,4 +1,3 @@
-"""Match lifecycle and result logic."""
 from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import or_
@@ -104,7 +103,6 @@ def _apply_match_result(match: Match, result: str):
 
 def _build_match_response_for_user(match, user_result, opponent_result, current_user_id, user_info, opponent_info,
                                    include_participants=False, rating_change_opponent_override=None):
-    """Builds common match response for the UI."""
     is_user_side = (current_user_id == match.user_id)
     result_for_user = match.result
     if match.result in ['win', 'loss'] and not is_user_side:

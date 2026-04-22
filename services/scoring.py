@@ -1,4 +1,3 @@
-"""Solution validation and task score calculation."""
 import math
 
 from extensions import db
@@ -7,14 +6,12 @@ from executor import run_code
 
 
 def normalize_output(output):
-    """Normalize code output for comparison (strip, unify line endings)."""
     if output is None:
         return ""
     return output.strip().replace('\r\n', '\n')
 
 
 def validate_solution(task_id, code, language):
-    """Run code against all test cases and return validation result."""
     task = db.session.get(Task, int(task_id))
     if not task:
         return {'error': 'Task not found'}

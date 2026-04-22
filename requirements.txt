@@ -6,10 +6,11 @@ Flask-Bcrypt
 WTForms
 psycopg2-binary
 python-dotenv
+eventlet
 gunicorn
 Werkzeug
 requests
 bleach>=6.0
 Flask-Limiter
 flask-socketio
-eventlet
+

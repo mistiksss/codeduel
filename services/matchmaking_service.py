@@ -1,4 +1,3 @@
-"""Matchmaking queue and opponent search."""
 from datetime import datetime, timezone, timedelta
 import threading
 

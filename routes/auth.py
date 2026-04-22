@@ -1,4 +1,3 @@
-"""Authentication routes: login, register, logout."""
 from datetime import datetime, timezone
 
 from flask import Blueprint, render_template, redirect, url_for

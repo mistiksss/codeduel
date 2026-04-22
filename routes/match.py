@@ -1,4 +1,3 @@
-"""Match routes: matchmaking, duel, status, opponent_info, forfeit, history."""
 import traceback
 from datetime import datetime, timezone, timedelta
 
@@ -36,7 +35,6 @@ def play_with_bot():
 @match_bp.route('/matchmaking')
 @login_required
 def matchmaking_page():
-    """Страница поиска матча. Помечаем онбординг завершённым при первом заходе."""
     if not getattr(current_user, 'onboarding_completed', False):
         current_user.onboarding_completed = True
         db.session.commit()
