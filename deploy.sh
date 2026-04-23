@@ -15,7 +15,7 @@ sudo apt install -y \
     postgresql postgresql-contrib
 
 echo "[3/8] PostgreSQL..."
-sudo -u postgres psql -c "CREATE USER codeduel WITH PASSWORD 'CHANGE_DB_PASSWORD';" 2>/dev/null || true
+sudo -u postgres psql -c "CREATE USER codeduel WITH PASSWORD '54321';" 2>/dev/null || true
 sudo -u postgres psql -c "CREATE DATABASE codeduel_db OWNER codeduel;" 2>/dev/null || true
 sudo -u postgres psql -c "ALTER USER codeduel CREATEDB;" 2>/dev/null || true
 
@@ -44,7 +44,7 @@ if [ ! -f /opt/codeduel/.env ]; then
     fi
     echo ">>> ОТРЕДАКТИРУЙТЕ /opt/codeduel/.env <<<"
     echo "   SECRET_KEY=..."
-    echo "   DATABASE_URL=postgresql://codeduel:PASSWORD@localhost:5432/codeduel_db"
+    echo "   DATABASE_URL=postgresql://codeduel:54321@localhost:5432/codeduel_db"
 fi
 
 echo "[7/8] systemd..."
