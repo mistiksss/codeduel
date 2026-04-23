@@ -46,10 +46,14 @@ if [ ! -f /opt/codeduel/.env ]; then
     echo "   SECRET_KEY=..."
     echo "   DATABASE_URL=postgresql://codeduel:54321@localhost:5432/codeduel_db"
 fi
-
 echo "[7/8] systemd..."
-sudo cp /opt/codeduel/codeduel.service /etc/systemd/system/
-sudo cp /opt/codeduel/gunicorn.conf.py /opt/codeduel/
+if [ -f /opt/codeduel/codeduel.service ]; then
+    sudo cp /opt/codeduel/codeduel.service /etc/systemd/system/
+fi
+if [ -f /opt/codeduel/gunicorn.conf.py ] && [ ! -f /opt/codeduel/gunicorn.conf.py ]; then
+    echo "gunicorn.conf.py уже на месте"
+fi
+
 sudo systemctl daemon-reload
 sudo systemctl enable codeduel
 
@@ -57,14 +61,14 @@ echo "[8/8] Nginx..."
 if [ -f /opt/codeduel/nginx.conf.example ]; then
     sudo cp /opt/codeduel/nginx.conf.example /etc/nginx/sites-available/codeduel
 fi
-sudo ln -sf /etc/nginx/sites-available/codeduel /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
 
-echo ""
-echo "=== Готово. Далее вручную ==="
-echo "1. sudo nano /etc/nginx/sites-available/codeduel  — впишите YOUR_DOMAIN_HERE"
-echo "2. sudo certbot --nginx -d YOUR_DOMAIN"
-echo "3. sudo systemctl restart codeduel"
-echo "4. sudo ufw allow 'Nginx Full'"
-echo ""
-echo "Логи: sudo journalctl -u codeduel -f"
+# Создаем симлинк
+sudo ln -sf /etc/nginx/sites-available/codeduel /etc/nginx/sites-enabled/
+
+# КРИТИЧНО: Удаляем стандартный конфиг, чтобы он не перехватывал запросы
+if [ -f /etc/nginx/sites-enabled/default ]; then
+    sudo rm /etc/nginx/sites-enabled/default
+fi
+
+# Проверка и перезагрузка
+sudo nginx -t && sudo systemctl reload nginx
