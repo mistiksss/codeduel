@@ -14,4 +14,4 @@ loglevel = "info"
 max_requests = 1000
 max_requests_jitter = 50
 
-preload_app = True
+preload_app = False
