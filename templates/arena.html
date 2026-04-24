@@ -18,7 +18,7 @@
     {% if active_match_id %}{% set header_extra = '<button type="button" class="btn btn_surrender" id="surrenderBtn">Сдаться</button>' %}{% endif %}
     {% include 'includes/header.html' %}
 
-    <div id="connectionLostBanner" class="connection_lost_banner">Соединение потеряно. Переподключение...</div>
+    <div id="connectionLostBanner" class="connection_lost_banner"></div>
 
     <main>
         <div class="problem">
@@ -197,7 +197,6 @@
         if (banner) banner.style.display = "block";
     });
     socket.on("connect", function() {
-        var banner = document.getElementById("connectionLostBanner");
         if (banner) banner.style.display = "none";
         if (currentMatchId) socket.emit("join", { room: currentMatchId });
     });
