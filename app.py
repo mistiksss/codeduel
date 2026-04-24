@@ -512,12 +512,16 @@ def submit_solution():
         _upsert_match_result(match, current_user.id, attempt)
         db.session.commit()
         finalize_match_if_needed(match)
+        db.session.refresh(match)
 
         try:
             match_data = _get_match_broadcast_data(match)
+            match_data['is_finished'] = match.result is not None
             socketio.emit('match_update', match_data, room=str(match.id))
+            if match.result:
+                socketio.emit('match_finished', match_data, room=str(match.id))
         except Exception as e:
-            app.logger.warning("socketio match_update emit failed: %s", e)
+            app.logger.error(f"CRITICAL SOCKET ERROR: {e}")
 
         return jsonify({
             'attempt_id': attempt.id,
