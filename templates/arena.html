@@ -193,14 +193,15 @@
     var pasteBlockedTimeout = null;
 
     socket.on("disconnect", function() {
-        var banner = document.getElementById("connectionLostBanner");
-        if (banner) banner.style.display = "block";
-    });
-    socket.on("connect", function() {
-        if (banner) banner.style.display = "none";
-        if (currentMatchId) socket.emit("join", { room: currentMatchId });
+        console.log("Connection lost, waiting for reconnect...");
     });
 
+    socket.on("connect", function() {
+        if (typeof currentMatchId !== 'undefined' && currentMatchId) {
+            socket.emit("join", { room: currentMatchId });
+        }
+        console.log("Connected/Reconnected successfully");
+    });
     require.config({ paths: { "vs": "https://unpkg.com/monaco-editor@0.33.0/min/vs" } });
 
     require(["vs/editor/editor.main"], function() {
