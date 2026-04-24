@@ -953,20 +953,6 @@ main {
 
 .result_btn:hover { opacity: 0.92; }
 
-.connection_lost_banner {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 9999;
-    background: #b52a2a;
-    color: #fff;
-    padding: 12px 20px;
-    text-align: center;
-    font-weight: 600;
-}
-
 .arena_hidden {
     display: none;
 }
