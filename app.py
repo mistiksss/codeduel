@@ -1,3 +1,5 @@
+import eventlet
+eventlet.monkey_patch()
 from flask import Flask, render_template, url_for, redirect, request, jsonify
 from flask_login import LoginManager, login_required, current_user
 from flask_bcrypt import Bcrypt
@@ -38,7 +40,7 @@ from flask_socketio import SocketIO
 bcrypt = Bcrypt(app)
 app.bcrypt = bcrypt
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 app.socketio = socketio
 
 from sockets import register_socket_handlers
