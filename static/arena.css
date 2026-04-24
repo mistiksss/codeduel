@@ -693,7 +693,6 @@ main {
     color: #EF4444;
 }
 
-/* Стили для информации о матче */
 .match_info {
     background-color: #1D1D1D;
     border-radius: 10px;
@@ -889,8 +888,6 @@ main {
     opacity: 0.9;
 }
 
-/* ---------------- Result modal ---------------- */
-
 .result_overlay {
     position: fixed;
     inset: 0;
@@ -955,12 +952,6 @@ main {
 
 .arena_hidden {
     display: none;
-}
-
-.error_label {
-    display: none;
-    color: #ff6b6b;
-    margin-top: 10px;
 }
 
 .result_modal_stats_row {
