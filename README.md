@@ -19,7 +19,7 @@
 
 ## Стек
 
-| Слой | Чем |
+| Задача | Реализация |
 | --- | --- |
 | Backend | Flask, Flask-SocketIO, SQLAlchemy |
 | Realtime | WebSocket (eventlet, один воркер) |
