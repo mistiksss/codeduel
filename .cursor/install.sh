@@ -41,7 +41,10 @@ SQL
 if ! sudo -u postgres psql -lqt | cut -d'|' -f1 | grep -qw "${DB_NAME}"; then
   echo "[install] Creating database ${DB_NAME} and restoring backup..."
   sudo -u postgres createdb -O postgres "${DB_NAME}"
-  sudo -u postgres psql -q -d "${DB_NAME}" -f codeduel_backup.sql
+  # The dump comes from PostgreSQL 18; strip the PG18-only SET that
+  # older server versions do not recognise (harmless, keeps logs clean).
+  grep -v '^SET transaction_timeout' codeduel_backup.sql \
+    | sudo -u postgres psql -q -d "${DB_NAME}"
   sudo -u postgres psql -d "${DB_NAME}" <<SQL
 GRANT ALL ON SCHEMA public TO ${DB_USER};
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${DB_USER};
