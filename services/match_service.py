@@ -1,24 +1,26 @@
-from datetime import datetime, timezone, timedelta
+"""Match lifecycle: timing, winner selection, Elo application, API payloads."""
+
+from datetime import timedelta
 
 from sqlalchemy import or_
 
+from constants import DUEL_MAX_TIME_SECONDS, MISSING_EXECUTION_TIME_SENTINEL
 from extensions import db
-from models import User, Task, Match, MatchResult
+from models import Match, MatchResult, Task, User
+from services.elo import calculate_elo_rating
+from utils.utc import to_utc_aware, utc_now
 
-DUEL_MAX_TIME = 7200
-
-
-def to_utc_aware(dt):
-    if dt is None:
-        return None
-    if getattr(dt, 'tzinfo', None) is not None:
-        return dt
-    return dt.replace(tzinfo=timezone.utc)
+DUEL_MAX_TIME = DUEL_MAX_TIME_SECONDS
 
 
 def normalize_match_started_at(match, now_utc=None):
+    """Ensure ``match.started_at`` is a sane timezone-aware UTC datetime.
+
+    Missing ``started_at`` falls back to ``created_at`` (or ``now``).
+    Values more than 60 seconds in the future are clamped to ``created_at``.
+    """
     if now_utc is None:
-        now_utc = datetime.now(timezone.utc)
+        now_utc = utc_now()
 
     if not getattr(match, 'started_at', None):
         match.started_at = to_utc_aware(getattr(match, 'created_at', None)) or now_utc
@@ -35,57 +37,53 @@ def normalize_match_started_at(match, now_utc=None):
     return started_at
 
 
-def calculate_elo_rating(rating1, rating2, result1):
-    K = 32
-    expected1 = 1 / (1 + 10 ** ((rating2 - rating1) / 400))
-    expected2 = 1 / (1 + 10 ** ((rating1 - rating2) / 400))
-    new_rating1 = rating1 + K * (result1 - expected1)
-    new_rating2 = rating2 + K * ((1 - result1) - expected2)
-    return round(new_rating1), round(new_rating2)
+def apply_match_result(match: Match, result: str):
+    """Persist the match outcome and update both players' ratings/stats.
 
-
-def _apply_match_result(match: Match, result: str):
+    ``result`` is from the ``match.user_id`` player's point of view
+    (``win`` / ``loss`` / ``draw``). Already-finalized matches are ignored.
+    """
     if match is None or match.result is not None:
         return
     if result not in {'win', 'loss', 'draw'}:
         raise ValueError('Invalid match result')
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = utc_now()
     started_at = normalize_match_started_at(match, now_utc=now_utc)
 
     user = db.session.get(User, match.user_id)
-    opp = db.session.get(User, match.opponent_id)
-    if not user or not opp:
+    opponent = db.session.get(User, match.opponent_id)
+    if not user or not opponent:
         raise RuntimeError('Users not found for match')
 
     match.result = result
 
     if result == 'win':
-        new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 1)
+        new_user_elo, new_opponent_elo = calculate_elo_rating(user.elo, opponent.elo, 1)
         user.wins += 1
         user.current_streak += 1
-        opp.losses += 1
-        opp.current_streak = 0
+        opponent.losses += 1
+        opponent.current_streak = 0
     elif result == 'loss':
-        new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 0)
+        new_user_elo, new_opponent_elo = calculate_elo_rating(user.elo, opponent.elo, 0)
         user.losses += 1
         user.current_streak = 0
-        opp.wins += 1
-        opp.current_streak += 1
+        opponent.wins += 1
+        opponent.current_streak += 1
     else:
-        new_user_elo, new_opp_elo = calculate_elo_rating(user.elo, opp.elo, 0.5)
+        new_user_elo, new_opponent_elo = calculate_elo_rating(user.elo, opponent.elo, 0.5)
         user.draws += 1
-        opp.draws += 1
+        opponent.draws += 1
         user.current_streak = 0
-        opp.current_streak = 0
+        opponent.current_streak = 0
 
     match.user_rating_change = new_user_elo - user.elo
-    match.opponent_rating_change = new_opp_elo - opp.elo
+    match.opponent_rating_change = new_opponent_elo - opponent.elo
     user.elo = new_user_elo
-    opp.elo = new_opp_elo
+    opponent.elo = new_opponent_elo
 
     user.games_played += 1
-    opp.games_played += 1
+    opponent.games_played += 1
 
     match.ended_at = now_utc
     ended_at = to_utc_aware(match.ended_at)
@@ -95,14 +93,28 @@ def _apply_match_result(match: Match, result: str):
 
     if user.elo > user.best_elo:
         user.best_elo = user.elo
-    if opp.elo > opp.best_elo:
-        opp.best_elo = opp.elo
+    if opponent.elo > opponent.best_elo:
+        opponent.best_elo = opponent.elo
 
     db.session.commit()
 
 
-def _build_match_response_for_user(match, user_result, opponent_result, current_user_id, user_info, opponent_info,
-                                   include_participants=False, rating_change_opponent_override=None):
+def build_match_response_for_user(
+    match,
+    user_result,
+    opponent_result,
+    current_user_id,
+    user_info,
+    opponent_info,
+    include_participants=False,
+    rating_change_opponent_override=None,
+):
+    """Build the JSON payload used by match-status API endpoints.
+
+    Scores and rating changes are rotated so they are always from
+    ``current_user_id``'s point of view, except ``include_participants``
+    which keeps the stored ``user`` / ``opponent`` sides of the Match row.
+    """
     is_user_side = (current_user_id == match.user_id)
     result_for_user = match.result
     if match.result in ['win', 'loss'] and not is_user_side:
@@ -110,20 +122,22 @@ def _build_match_response_for_user(match, user_result, opponent_result, current_
     rating_change_for_user = match.user_rating_change if is_user_side else match.opponent_rating_change
     rating_change_for_opponent = rating_change_opponent_override
     if rating_change_for_opponent is None:
-        rating_change_for_opponent = match.opponent_rating_change if is_user_side else match.user_rating_change
+        rating_change_for_opponent = (
+            match.opponent_rating_change if is_user_side else match.user_rating_change
+        )
 
     user_score = user_result.score if user_result else 0
-    opp_score = opponent_result.score if opponent_result else 0
+    opponent_score = opponent_result.score if opponent_result else 0
     user_tests = user_result.tests_passed if user_result else 0
     user_total = user_result.total_tests if user_result else 0
-    opp_tests = opponent_result.tests_passed if opponent_result else 0
-    opp_total = opponent_result.total_tests if opponent_result else 0
+    opponent_tests = opponent_result.tests_passed if opponent_result else 0
+    opponent_total = opponent_result.total_tests if opponent_result else 0
     if not is_user_side:
-        user_score, opp_score = opp_score, user_score
-        user_tests, opp_tests = opp_tests, user_tests
-        user_total, opp_total = opp_total, user_total
+        user_score, opponent_score = opponent_score, user_score
+        user_tests, opponent_tests = opponent_tests, user_tests
+        user_total, opponent_total = opponent_total, user_total
 
-    data = {
+    payload = {
         'match_id': match.id,
         'result': match.result,
         'result_for_user': result_for_user,
@@ -131,17 +145,17 @@ def _build_match_response_for_user(match, user_result, opponent_result, current_
         'rating_change_for_user': rating_change_for_user,
         'rating_change_for_opponent': rating_change_for_opponent,
         'score_for_user': user_score,
-        'score_for_opponent': opp_score,
+        'score_for_opponent': opponent_score,
         'tests_passed_for_user': user_tests,
         'total_tests_for_user': user_total,
-        'tests_passed_for_opponent': opp_tests,
-        'total_tests_for_opponent': opp_total,
+        'tests_passed_for_opponent': opponent_tests,
+        'total_tests_for_opponent': opponent_total,
     }
     if include_participants and user_info and opponent_info:
-        data['created_at'] = match.created_at.isoformat() if match.created_at else None
-        data['user_rating_change'] = match.user_rating_change
-        data['opponent_rating_change'] = match.opponent_rating_change
-        data['participants'] = {
+        payload['created_at'] = match.created_at.isoformat() if match.created_at else None
+        payload['user_rating_change'] = match.user_rating_change
+        payload['opponent_rating_change'] = match.opponent_rating_change
+        payload['participants'] = {
             'user': {
                 'id': user_info.id,
                 'username': user_info.username,
@@ -159,27 +173,37 @@ def _build_match_response_for_user(match, user_result, opponent_result, current_
                 'score': opponent_result.score if opponent_result else 0,
                 'tests_passed': opponent_result.tests_passed if opponent_result else 0,
                 'total_tests': opponent_result.total_tests if opponent_result else 0,
-            }
+            },
         }
-    return data
+    return payload
 
 
 def get_task_max_score(task_id: int) -> int:
+    """Return the task's ``points`` value, or 0 if the task is missing."""
     task = db.session.get(Task, int(task_id))
     return int(task.points or 0) if task else 0
 
 
 def get_active_match_for_user(user_id: int):
-    match = (Match.query.filter(
-        or_(Match.user_id == user_id, Match.opponent_id == user_id),
-        Match.result == None
-    ).order_by(Match.created_at.desc()).first())
+    """Return the user's latest unfinished match, or ``None``.
+
+    Side effect: missing ``started_at`` is filled in, and expired / fully
+    solved matches are finalized before the check.
+    """
+    match = (
+        Match.query.filter(
+            or_(Match.user_id == user_id, Match.opponent_id == user_id),
+            Match.result == None,  # noqa: E711 — SQL NULL comparison
+        )
+        .order_by(Match.created_at.desc())
+        .first()
+    )
 
     if not match:
         return None
 
     if not match.started_at:
-        match.started_at = to_utc_aware(match.created_at) or datetime.now(timezone.utc)
+        match.started_at = to_utc_aware(match.created_at) or utc_now()
         db.session.commit()
 
     finalize_match_if_needed(match)
@@ -188,7 +212,7 @@ def get_active_match_for_user(user_id: int):
     return match if match.result is None else None
 
 
-def _determine_match_winner(
+def determine_match_winner(
     user_score: int,
     opponent_score: int,
     user_tests_passed: int,
@@ -198,6 +222,11 @@ def _determine_match_winner(
     user_solved_all: bool,
     opponent_solved_all: bool,
 ) -> str | None:
+    """Decide the stored ``Match.result`` from the ``user_id`` side.
+
+    Priority: full solve (then faster time) → more tests passed → higher
+    score → faster time → draw.
+    """
     if user_solved_all or opponent_solved_all:
         if user_solved_all and not opponent_solved_all:
             return 'win'
@@ -224,9 +253,15 @@ def _determine_match_winner(
 
 
 def finalize_match_if_needed(match: Match):
+    """Close the match when someone fully solved it or the timer expired.
+
+    Winner detection is delegated to :func:`determine_match_winner`. The
+    outcome is then applied through :func:`apply_match_result` so Elo and
+    statistics are persisted in the same transaction as ``match.result``.
+    """
     if match is None or match.result is not None:
         return
-    now_utc = datetime.now(timezone.utc)
+    now_utc = utc_now()
     normalize_match_started_at(match, now_utc=now_utc)
     db.session.commit()
 
@@ -238,10 +273,14 @@ def finalize_match_if_needed(match: Match):
     user_tests_passed = (user_result.tests_passed if user_result else 0) or 0
     opponent_tests_passed = (opponent_result.tests_passed if opponent_result else 0) or 0
     user_exec_time = (
-        user_result.execution_time if user_result and user_result.execution_time is not None else 10**9
+        user_result.execution_time
+        if user_result and user_result.execution_time is not None
+        else MISSING_EXECUTION_TIME_SENTINEL
     )
     opponent_exec_time = (
-        opponent_result.execution_time if opponent_result and opponent_result.execution_time is not None else 10**9
+        opponent_result.execution_time
+        if opponent_result and opponent_result.execution_time is not None
+        else MISSING_EXECUTION_TIME_SENTINEL
     )
 
     user_solved_all = bool(
@@ -253,26 +292,33 @@ def finalize_match_if_needed(match: Match):
         and (opponent_result.tests_passed or 0) == (opponent_result.total_tests or 0)
     )
 
+    outcome = None
     if user_solved_all or opponent_solved_all:
-        match.result = _determine_match_winner(
+        outcome = determine_match_winner(
             user_score, opponent_score,
             user_tests_passed, opponent_tests_passed,
             user_exec_time, opponent_exec_time,
             user_solved_all, opponent_solved_all,
         )
 
-    if match.result is None:
+    if outcome is None:
         started_at = normalize_match_started_at(match, now_utc=now_utc)
         elapsed = int((now_utc - started_at).total_seconds()) if started_at else 0
         if elapsed >= DUEL_MAX_TIME:
-            match.result = _determine_match_winner(
+            outcome = determine_match_winner(
                 user_score, opponent_score,
                 user_tests_passed, opponent_tests_passed,
                 user_exec_time, opponent_exec_time,
                 user_solved_all, opponent_solved_all,
             )
 
-    if match.result is None:
+    if outcome is None:
         return
 
-    _apply_match_result(match, match.result)
+    apply_match_result(match, outcome)
+
+
+# Backward-compatible aliases for any leftover private-name imports.
+_apply_match_result = apply_match_result
+_build_match_response_for_user = build_match_response_for_user
+_determine_match_winner = determine_match_winner
