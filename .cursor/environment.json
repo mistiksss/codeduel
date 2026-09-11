@@ -1,0 +1,12 @@
+{
+  "name": "CodeDuel",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "server",
+      "command": "./venv/bin/python run_socketio.py"
+    }
+  ],
+  "ports": [5000]
+}
