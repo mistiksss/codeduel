@@ -30,11 +30,14 @@
     padding: 24px 32px;
     background: linear-gradient(135deg, #00D4FF, #0099cc);
     color: #000;
+    font-family: 'Source Code Pro', monospace;
     font-size: 22px;
     font-weight: 700;
     text-align: center;
+    border: none;
     border-radius: 12px;
     text-decoration: none;
+    cursor: pointer;
     box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
     transition: transform 0.2s, box-shadow 0.2s;
 }

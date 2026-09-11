@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include 'includes/favicons.html' %}
     <title>CodeDuel - Задачи</title>
-    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='tasks.css') }}">
 </head>
@@ -33,11 +34,11 @@
                 <div class="task_item"
                      data-id="{{ task.id }}"
                      data-title="{{ task.title|lower }}"
-                     data-difficulty="{{ task.difficulty_level|lower }}">
+                     data-difficulty="{{ task.difficulty_label }}">
                     <div class="task_num">{{ task.id }}</div>
                     <div class="task_info">
                         <div class="task_name">{{ task.title }}</div>
-                        <div class="task_level">{{ task.difficulty_level }}</div>
+                        <div class="task_level">{{ task.difficulty_label }}</div>
                     </div>
                     <div class="task_actions">
                         {% set st = best_status_by_task.get(task.id) %}
@@ -63,7 +64,7 @@
             </div>
             <div class="contact">
                 <div class="icon_phone"></div>
-                <div class="phone">+1 (123) 456 78 80</div>
+                <a href="tel:+79054718016" class="phone">+7 (905) 471 80 16</a>
             </div>
         </div>
     </footer>

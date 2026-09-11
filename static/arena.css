@@ -12,15 +12,27 @@ body {
     padding-top: 73px;
     font-family: 'Source Code Pro', monospace;
     color: #b8b8b8;
-    background:
-        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
-        url('Matrix-Code-PNG-Image.png');
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+
     background-color: #0A0A0A;
     overflow-x: hidden;
+}
+
+.connection_lost_banner {
+    display: none;
+    position: fixed;
+    top: 73px;
+    left: 0;
+    right: 0;
+    z-index: 1100;
+    background: #EF4444;
+    color: #fff;
+    text-align: center;
+    padding: 10px 16px;
+    font-weight: 600;
+}
+
+.connection_lost_banner.is_visible {
+    display: block;
 }
 
 header {
@@ -48,7 +60,7 @@ header {
 .header_icon {
     width: 30px;
     height: 28px;
-    background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+    background-image: url('icons/trophy.png');
     background-position: center;
     background-size: contain;
     background-repeat: no-repeat;

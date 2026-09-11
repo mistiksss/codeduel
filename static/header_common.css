@@ -36,7 +36,7 @@ header {
 .header_icon {
     width: 30px;
     height: 28px;
-    background: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png') center / contain no-repeat;
+    background: url('icons/trophy.png') center / contain no-repeat;
 }
 
 .header_name {
@@ -133,4 +133,15 @@ header {
 
 .header_logout:hover {
     color: #f87171;
+}
+
+footer a.phone,
+footer a.email {
+    color: inherit;
+    text-decoration: none;
+}
+
+footer a.phone:hover,
+footer a.email:hover {
+    color: #00D4FF;
 }

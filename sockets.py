@@ -1,11 +1,14 @@
+"""Socket.IO event handlers for the duel arena."""
+
 from flask_login import current_user
-from flask_socketio import join_room, leave_room, disconnect
+from flask_socketio import disconnect, join_room, leave_room
 
 from extensions import db
 from models import Match
 
 
-def _is_participant(match_id) -> bool:
+def _is_match_participant(match_id) -> bool:
+    """Return True if the current user is a player in ``match_id``."""
     if not current_user.is_authenticated:
         return False
     try:
@@ -17,34 +20,36 @@ def _is_participant(match_id) -> bool:
         return False
 
 
-def register_socket_handlers(sio):
+def register_socket_handlers(socketio):
+    """Attach join/leave/typing handlers to ``socketio``."""
 
-    @sio.on("join")
+    @socketio.on('join')
     def on_join(data):
-        room = data.get("room") if isinstance(data, dict) else data
+        room = data.get('room') if isinstance(data, dict) else data
         if room is None:
             return
-        if not _is_participant(room):
+        if not _is_match_participant(room):
             disconnect()
             return
         join_room(str(room))
 
-    @sio.on("leave")
+    @socketio.on('leave')
     def on_leave(data):
-        room = data.get("room") if isinstance(data, dict) else data
+        room = data.get('room') if isinstance(data, dict) else data
         if room is not None:
             leave_room(str(room))
 
-    @sio.on("submit_update")
+    @socketio.on('submit_update')
     def on_submit_update(data):
-        pass
+        # Kept for protocol compatibility with the arena client.
+        return None
 
-    @sio.on("typing")
+    @socketio.on('typing')
     def on_typing(data):
-        room = data.get("room") if isinstance(data, dict) else data
+        room = data.get('room') if isinstance(data, dict) else data
         if room is None:
             return
-        if not _is_participant(room):
+        if not _is_match_participant(room):
             disconnect()
             return
-        sio.emit("typing", {"typing": True}, to=str(room), include_self=False)
+        socketio.emit('typing', {'typing': True}, to=str(room), include_self=False)

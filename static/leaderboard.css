@@ -12,13 +12,7 @@ body {
     padding-top: 73px;
     font-family: 'Source Code Pro', monospace;
     color: #b8b8b8;
-    background:
-        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
-        url('Matrix-Code-PNG-Image.png');
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+
     background-color: #0A0A0A;
 }
 
@@ -52,7 +46,7 @@ header {
 .header-icon {
     width: 30px;
     height: 28px;
-    background: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png') center/contain no-repeat;
+    background: url('icons/trophy.png') center/contain no-repeat;
 }
 
 .header-name {
@@ -248,7 +242,7 @@ footer {
 .footer-icon {
     width: 30px;
     height: 30px;
-    background: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png') center/contain no-repeat;
+    background: url('icons/trophy.png') center/contain no-repeat;
 }
 
 .footer-right {

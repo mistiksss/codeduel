@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include 'includes/favicons.html' %}
     <title>{{ task.title }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='arena.css') }}">
 </head>
 <body data-arena-task-id="{{ task.id }}"
       data-arena-time-limit="{{ task.time_limit }}"
-      data-arena-memory-limit="{{ task.memory_limit }}"
+      data-arena-memory-limit="{{ task.memory_limit or 256 }}"
       data-arena-task-points="{{ task.points if task.points else 100 }}"
       data-arena-user-elo="{{ current_user.elo|default(1000)|int }}"
       data-arena-match-id="{{ match.id if match else '' }}"
@@ -31,6 +32,7 @@
                 <div class="problem_task">
                     <div class="problem_limite">
                         <div>Лимит времени: {{ task.time_limit }} сек</div>
+                        <div>Лимит памяти: {{ task.memory_limit or 256 }} МБ</div>
                     </div>
                     <h3 class="problem_title">Условие задачи</h3>
                     <div class="problem_description">{{ task.description }}</div>
@@ -158,12 +160,7 @@
     <div class="result_overlay arena_hidden" id="resultOverlay">
         <div class="result_modal" id="resultModal">
             <div class="result_modal_header" id="resultTitle">Матч завершён</div>
-            <div class="result_modal_tabs" id="resultModalTabs">
-                <span class="result_tab result_tab_active" data-tab="summary">Результат</span>
-                <span class="result_tab" data-tab="opponent_code">Код соперника</span>
-            </div>
             <div class="result_modal_body" id="resultBody"></div>
-            <div class="result_modal_opponent_code arena_hidden" id="resultOpponentCode"></div>
             <div class="result_modal_actions" id="resultModalActions">
                 <a class="result_btn" href="{{ url_for('match.matchmaking_page') }}">В матчмейкинг</a>
                 <button class="result_btn secondary" id="resultCloseBtn" type="button">Закрыть</button>
@@ -171,8 +168,8 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="https://unpkg.com/monaco-editor@0.33.0/min/vs/loader.js"></script>
+    <script src="{{ url_for('static', filename='vendor/socket.io/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/monaco/vs/loader.js') }}"></script>
     <script>
     var _t = {
         taskId: parseInt(document.body.getAttribute("data-arena-task-id") || "0"),
@@ -190,19 +187,25 @@
     var currentMatchId = ARENA_MATCH_ID || null;
     var joinedRoomId = null;
     var editor = null;
-    var pasteBlockedTimeout = null;
 
     socket.on("disconnect", function() {
-        console.log("Connection lost, waiting for reconnect...");
+        var banner = document.getElementById("connectionLostBanner");
+        if (banner) {
+            banner.textContent = "Соединение потеряно. Переподключаемся...";
+            banner.classList.add("is_visible");
+        }
     });
 
     socket.on("connect", function() {
+        var banner = document.getElementById("connectionLostBanner");
+        if (banner) {
+            banner.classList.remove("is_visible");
+        }
         if (typeof currentMatchId !== 'undefined' && currentMatchId) {
             socket.emit("join", { room: currentMatchId });
         }
-        console.log("Connected/Reconnected successfully");
     });
-    require.config({ paths: { "vs": "https://unpkg.com/monaco-editor@0.33.0/min/vs" } });
+    require.config({ paths: { "vs": "{{ url_for('static', filename='vendor/monaco/vs') }}" } });
 
     require(["vs/editor/editor.main"], function() {
         editor = monaco.editor.create(document.getElementById("codeEditor"), {
@@ -229,25 +232,7 @@
         editor.onDidChangeModelContent(function() {
             if (typingDebounce) clearTimeout(typingDebounce);
             typingDebounce = setTimeout(emitTyping, 500);
-            if (_t.matchExists) {
-                showPasteBlockedMessage();
-            }
         });
-
-        function showPasteBlockedMessage() {
-            var el = document.getElementById("pasteBlockedMsg");
-            if (!el) {
-                var msg = document.createElement("div");
-                msg.id = "pasteBlockedMsg";
-                msg.style.cssText = "position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#EF4444;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;z-index:9999;";
-                msg.textContent = "Вставка запрещена во время матча";
-                document.body.appendChild(msg);
-                el = msg;
-            }
-            el.style.display = "block";
-            if (pasteBlockedTimeout) clearTimeout(pasteBlockedTimeout);
-            pasteBlockedTimeout = setTimeout(function() { el.style.display = "none"; }, 2500);
-        }
 
         var resultShown = false;
         var typingTimeout = null;
@@ -283,32 +268,6 @@
             var myChangeText = myChangeNum >= 0 ? "+" + myChangeNum : "" + myChangeNum;
 
             bodyEl.innerHTML = "<div class=\"result_modal_stats_row\">Прошло тестов: <b>" + myPassed + "/" + myTotal + "</b><br/>Прошло тестов соперника: <b>" + oppPassed + "/" + oppTotal + "</b></div><div class=\"result_modal_rating_row\">Изменение рейтинга: <b>" + myChangeText + "</b><br/></div>";
-
-            var oppCodeEl = document.getElementById("resultOpponentCode");
-            var oppCode = matchStatus.opponent_code;
-            var canViewCode = oppCode !== undefined && oppCode !== null;
-            if (oppCodeEl) {
-                if (canViewCode) {
-                    var escapedCode = escapeHtml(String(oppCode || ""));
-                    oppCodeEl.innerHTML = "<pre class=\"opponent_code_pre\">" + escapedCode + "</pre>";
-                } else {
-                    oppCodeEl.innerHTML = "<div class=\"opponent_code_locked\"><span class=\"locked_icon\">&#128274;</span><p>Код соперника доступен в Pro</p><a href=\"/pricing\" class=\"result_btn result_btn_unlock\">Разблокировать решение (Купить Pro)</a></div>";
-                }
-            }
-
-            var tabs = document.querySelectorAll(".result_tab");
-            if (tabs.length >= 2) {
-                tabs.forEach(function(t) {
-                    t.onclick = function() {
-                        var tab = t.getAttribute("data-tab");
-                        tabs.forEach(function(x) { x.classList.remove("result_tab_active"); });
-                        t.classList.add("result_tab_active");
-                        if (bodyEl) bodyEl.style.display = (tab === "summary") ? "block" : "none";
-                        if (oppCodeEl) oppCodeEl.style.display = (tab === "opponent_code") ? "block" : "none";
-                    };
-                });
-            }
-            function escapeHtml(s) { var d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 
             var actionsEl = document.getElementById("resultModalActions");
             var shareBtn = document.getElementById("resultShareBtn");

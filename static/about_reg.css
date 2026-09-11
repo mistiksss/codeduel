@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro');
 
 * {
 	box-sizing: border-box;
@@ -14,13 +13,7 @@ body {
     padding-top: 73px;
     font-family: 'Source Code Pro', monospace;
     color: #b8b8b8;
-    background-image:
-        linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
-        url('Matrix-Code-PNG-Image.png');
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+
     background-color: #0A0A0A;
 }
 
@@ -55,7 +48,7 @@ header {
 .trophy_icon {
 	width: 30px;
 	height: 28px;
-	background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+	background-image: url('icons/trophy.png');
 	background-position: center;
 	background-size: contain;
 	background-repeat: no-repeat;
@@ -153,52 +146,6 @@ h2 {
 	border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.team {
-	margin-bottom: 80px;
-}
-
-.t_card {
-    display: grid;
-    grid-auto-columns: 400px;
-    grid-auto-flow: column;
-    justify-content: center;
-    gap: 20px;
-	max-width: 1000px;
-	margin: 0 auto;
-}
-
-.team_member {
-	background-color: #2C2C2C;
-	border-radius: 16px;
-	padding: 32px;
-	text-align: center;
-	color: #ffffff;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-
-}
-
-.member_photo {
-	width: 150px;
-	height: 150px;
-	border-radius: 75px;
-	background-color: gray;
-	margin: 0 auto 20px;
-}
-
-.team_member h3 {
-	color: #ffffff;
-	margin: 0 0 8px;
-	font-size: 24px;
-	font-weight: 600;
-}
-
-.position {
-	color: #ffffff;
-	font-size: 18px;
-	font-weight: 500;
-	margin: 0;
-}
-
 .adv {
 	margin-bottom: 80px;
 }
@@ -254,7 +201,7 @@ footer {
 .footer_icon {
     width: 30px;
     height: 30px;
-    background-image: url('https://i.postimg.cc/fyFHR4SY/Icon-trophy-1-4x4.png');
+    background-image: url('icons/trophy.png');
     background-position: center;
     background-size: contain;
     background-repeat: no-repeat;

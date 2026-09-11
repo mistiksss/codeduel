@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include 'includes/favicons.html' %}
     <title>{% if is_own_profile %}Профиль{% else %}Профиль {{ profile_user.username }}{% endif %} - CodeDuel</title>
-    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='profile.css') }}">
 </head>
@@ -120,7 +121,7 @@
             </div>
             <div class="contact">
                 <div class="icon_phone"></div>
-                <div class="phone">+1 (123) 456 78 80</div>
+                <a href="tel:+79054718016" class="phone">+7 (905) 471 80 16</a>
             </div>
         </div>
     </footer>

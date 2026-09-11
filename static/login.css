@@ -11,11 +11,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background-image: linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)), url('Matrix-Code-PNG-Image.png');
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+
 }
 
 .login_container {
@@ -65,6 +61,17 @@ body {
 
 .form_input::placeholder {
     color: #666;
+}
+
+.form_errors {
+    margin-bottom: 16px;
+}
+
+.form_error {
+    color: #EF4444;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 8px;
 }
 
 .login_btn {

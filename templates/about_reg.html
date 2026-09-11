@@ -2,10 +2,12 @@
 <html lang="ru">
 <head>
 	<meta charset="UTF-8">
+    {% include 'includes/favicons.html' %}
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>О нас - CodeDuel</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
 	<link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
-	<link rel="stylesheet" href="../static/about_reg.css">
+	<link rel="stylesheet" href="{{ url_for('static', filename='about_reg.css') }}">
 </head>
 <body>
 	{% include 'includes/header.html' %}
@@ -21,27 +23,6 @@
 				<h2>Наша миссия</h2>
 				<div class="card">
 					<p>Мы создаем сообщество разработчиков, где каждый может проверить свои навыки, научиться чему-то новому и посоревноваться с достойными соперниками. Наша цель — сделать программирование более интересным и увлекательным.</p>
-				</div>
-			</div>
-
-			<div class="team">
-				<h2>Наша команда</h2>
-				<div class="t_card">
-					<div class="team_member">
-						<div class="member_photo"></div>
-						<h3>Константин Краев</h3>
-						<div class="position">Backend</div>
-					</div>
-					<div class="team_member">
-						<div class="member_photo"></div>
-						<h3>Андрей Дронов</h3>
-                        <div>Data Scientist</div>
-					</div>
-                    <div class="team_member">
-						<div class="member_photo"></div>
-						<h3>Роман Воробьев</h3>
-                        <div>Frontend</div>
-					</div>
 				</div>
 			</div>
 
@@ -78,7 +59,7 @@
 			</div>
 			<div class="contact">
 				<div class="icon_phone"></div>
-				<div class="phone">+1 (123) 456 78 80</div>
+				<a href="tel:+79054718016" class="phone">+7 (905) 471 80 16</a>
 			</div>
 		</div>
 	</footer>

@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лидерборд - CodeDuel</title>
-    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% include 'includes/favicons.html' %}
+    <title>Таблица лидеров - CodeDuel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='leaderboard.css') }}">
 </head>
@@ -37,7 +38,7 @@
             </div>
             <div class="contact">
                 <div class="icon-phone"></div>
-                <div class="phone">+1 (123) 456 78 80</div>
+                <a href="tel:+79054718016" class="phone">+7 (905) 471 80 16</a>
             </div>
         </div>
     </footer>
@@ -79,7 +80,6 @@
                     <div class="rank">${i}</div>
                     <div class="username">
                         ${user ? user.username : '-'}
-                        ${user && user.is_premium ? '<span title="Premium"> 👑</span>' : ''}
                     </div>
                     <div class="elo">${user ? user.elo : '-'}</div>
                 `;

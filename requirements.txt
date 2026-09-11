@@ -4,6 +4,7 @@ Flask-Login
 Flask-WTF
 Flask-Bcrypt
 WTForms
+email-validator
 psycopg2-binary
 python-dotenv
 eventlet

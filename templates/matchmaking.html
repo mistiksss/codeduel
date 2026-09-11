@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include 'includes/favicons.html' %}
     <title>Поиск дуэли - CodeDuel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='header_common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='matchmaking.css') }}">
 </head>
@@ -130,7 +132,7 @@
             </div>
             <div class="contact">
                 <div class="icon_phone"></div>
-                <div class="phone">+1 (123) 456 78 80</div>
+                <a href="tel:+79054718016" class="phone">+7 (905) 471 80 16</a>
             </div>
         </div>
     </footer>
@@ -331,12 +333,16 @@
 
     /* онлайн */
     async function loadOnlineStats() {
-        const r = await fetch(`${API_BASE}/online_players`);
-        const d = await r.json();
-        // "Ищут матч" (внизу) + "Игроков в очереди" (в статусе поиска)
-        totalInQueue.textContent = d.total_in_queue;
-        totalPlayers.textContent = d.total_in_queue;
-        totalOnline.textContent = d.total_online;
+        try {
+            const r = await fetch(`${API_BASE}/online_players`);
+            if (!r.ok) return;
+            const d = await r.json();
+            const queued = typeof d.total_in_queue === 'number' ? d.total_in_queue : 0;
+            const online = typeof d.total_online === 'number' ? d.total_online : 0;
+            if (totalInQueue) totalInQueue.textContent = queued;
+            if (totalPlayers) totalPlayers.textContent = queued;
+            if (totalOnline) totalOnline.textContent = online;
+        } catch (e) {}
     }
 
     
